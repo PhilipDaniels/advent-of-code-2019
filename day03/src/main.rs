@@ -79,27 +79,28 @@ fn main() {
 fn plot_wire(board: &mut Board, wire_input: Vec<Instruction>, wire: Wire) -> i32 {
     let mut smallest_manhattan_distance = 0;
 
-    let mut position = (0,0);
+    let mut x = 0;
+    let mut y = 0;
     for Instruction { direction, mut number } in wire_input {
         while number > 0 {
             // Calculate the next position. By doing this before we store in
             // the board, we ensure we don't plot a point at (0,0), avoiding
             // having to filter it out as a special case.
-            position = match direction {
-                Direction::Left => (position.0 - 1, position.1),
-                Direction::Right => (position.0 + 1, position.1),
-                Direction::Up => (position.0, position.1 + 1),
-                Direction::Down => (position.0, position.1 - 1),
+            match direction {
+                Direction::Left => x -= 1,
+                Direction::Right => x += 1,
+                Direction::Up => y += 1,
+                Direction::Down => y -= 1,
             };
 
             if wire == Wire::Wire1 {
-                board.insert(position);
+                board.insert((x, y));
             } else {
                 // We don't actually need to write Wire2 into the board,
                 // we just need to check if there is a Wire1 at that position.
-                if board.contains(&position) {
+                if board.contains(&(x, y)) {
                     // This is a crossing point.
-                    let this_manhattan_distance = position.0.abs() + position.1.abs();
+                    let this_manhattan_distance = x.abs() + y.abs();
                     if this_manhattan_distance < smallest_manhattan_distance || smallest_manhattan_distance == 0 {
                         smallest_manhattan_distance = this_manhattan_distance;
                     }
