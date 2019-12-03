@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 const WIRE1_INPUT: &str = "R1000,U573,L25,U468,L833,D867,R515,D941,L513,D1,L380,U335,L661,D725,L506,U365,L103,\
 D987,L425,U756,R129,D153,R326,U297,L456,D632,L142,U666,R864,D255,R85,D661,L566,D125,R445,\
@@ -35,17 +35,13 @@ R360,U253,R230,D879,L606,D755,R859,U232,R771,U465,R858,D823,R405,D499,L737,U846,
 L746,D569,L563,D410,L409,D39,R117,U638,R824,D215,R232,U578,R790,U535,R873,D477,R805,U94,L313,U570,\
 L500,U783,L556,U663,L335,U152,L524,D583,L462,U710,R741,U641,L135";
 
-/// We model the 'board' as a hashtable of (x,y) -> CellContents.
-/// This means we do not have to make a growable matrix-type structure,
-/// we can just probe the hashtable for (x,y) coordinates.
-#[derive(Debug, Clone, Copy)]
-enum CellContents {
-    Wire1,
-    Wire2,
-    Crossing
-}
-
-type Board = HashMap<(i32, i32), CellContents>;
+/// We model the 'board' as a hashset of (x,y) coordinates.
+/// It turns out that we only ever need to store the coordinates
+/// for the first wire, when we are processing the second wire
+/// we can just check for a crossing by probing the hashset, we
+/// don't need to store wire 2's path at all.
+/// This means we do not have to make a growable matrix-type structure.
+type Board = HashSet<(i32, i32)>;
 
 #[derive(Debug, Clone, Copy)]
 enum Direction {
@@ -61,20 +57,26 @@ struct Instruction {
     number: i32
 }
 
+#[derive(PartialEq)]
+enum Wire {
+    Wire1,
+    Wire2
+}
+
 fn main() {
     let wire1_input = parse_input(WIRE1_INPUT);
     let wire2_input = parse_input(WIRE2_INPUT);
 
     let mut board = Board::new();
-    plot_wire(&mut board, wire1_input, 1);
-    let manhattan_distance = plot_wire(&mut board, wire2_input, 2);
+    plot_wire(&mut board, wire1_input, Wire::Wire1);
+    let manhattan_distance = plot_wire(&mut board, wire2_input, Wire::Wire2);
     println!("The smallest Manhattan distance is {}", manhattan_distance);
 }
 
 /// Plot the path of a wire by adding to the board all the positions
 /// mentioned by the wire's path, starting at (0,0). If doing wire 2,
 /// look for crossings while we do it.
-fn plot_wire(board: &mut Board, wire_input: Vec<Instruction>, wire_number: i32) -> i32 {
+fn plot_wire(board: &mut Board, wire_input: Vec<Instruction>, wire: Wire) -> i32 {
     let mut smallest_manhattan_distance = 0;
 
     let mut position = (0,0);
@@ -90,12 +92,12 @@ fn plot_wire(board: &mut Board, wire_input: Vec<Instruction>, wire_number: i32) 
                 Direction::Down => (position.0, position.1 - 1),
             };
 
-            if wire_number == 1 {
-                board.insert(position, CellContents::Wire1);
+            if wire == Wire::Wire1 {
+                board.insert(position);
             } else {
                 // We don't actually need to write Wire2 into the board,
                 // we just need to check if there is a Wire1 at that position.
-                if board.contains_key(&position) {
+                if board.contains(&position) {
                     // This is a crossing point.
                     let this_manhattan_distance = position.0.abs() + position.1.abs();
                     if this_manhattan_distance < smallest_manhattan_distance || smallest_manhattan_distance == 0 {
@@ -104,6 +106,7 @@ fn plot_wire(board: &mut Board, wire_input: Vec<Instruction>, wire_number: i32) 
                 }
             }
 
+            // Proceed with moving N steps for this instruction.
             number -= 1;
         }
     }
