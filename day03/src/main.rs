@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 const WIRE1_INPUT: &str = "R1000,U573,L25,U468,L833,D867,R515,D941,L513,D1,L380,U335,L661,D725,L506,U365,L103,\
 D987,L425,U756,R129,D153,R326,U297,L456,D632,L142,U666,R864,D255,R85,D661,L566,D125,R445,\
@@ -41,7 +41,7 @@ L500,U783,L556,U663,L335,U152,L524,D583,L462,U710,R741,U641,L135";
 /// we can just check for a crossing by probing the hashset, we
 /// don't need to store wire 2's path at all.
 /// This means we do not have to make a growable matrix-type structure.
-type Board = HashSet<(i32, i32)>;
+type Board = HashMap<(i32, i32), u32>;
 
 #[derive(Debug, Clone, Copy)]
 enum Direction {
@@ -81,8 +81,12 @@ fn plot_wire(board: &mut Board, wire_input: Vec<Instruction>, wire: Wire) -> i32
 
     let mut x = 0;
     let mut y = 0;
+    let mut num_steps = 0;
     for Instruction { direction, mut number } in wire_input {
         while number > 0 {
+            // The minimum value we will store in the map is 1.
+            num_steps += 1;
+
             // Calculate the next position. By doing this before we store in
             // the board, we ensure we don't plot a point at (0,0), avoiding
             // having to filter it out as a special case.
@@ -94,11 +98,11 @@ fn plot_wire(board: &mut Board, wire_input: Vec<Instruction>, wire: Wire) -> i32
             };
 
             if wire == Wire::Wire1 {
-                board.insert((x, y));
+                board.insert((x, y), num_steps);
             } else {
                 // We don't actually need to write Wire2 into the board,
                 // we just need to check if there is a Wire1 at that position.
-                if board.contains(&(x, y)) {
+                if board.contains_key(&(x, y)) {
                     // This is a crossing point.
                     let this_manhattan_distance = x.abs() + y.abs();
                     if this_manhattan_distance < smallest_manhattan_distance || smallest_manhattan_distance == 0 {
