@@ -69,15 +69,19 @@ fn main() {
 
     let mut board = Board::new();
     plot_wire(&mut board, wire1_input, Wire::Wire1);
-    let manhattan_distance = plot_wire(&mut board, wire2_input, Wire::Wire2);
+    let (manhattan_distance, combined_steps) = plot_wire(&mut board, wire2_input, Wire::Wire2);
     println!("The smallest Manhattan distance is {}", manhattan_distance);
+    println!("The minimum combined steps is {}", combined_steps);
 }
 
 /// Plot the path of a wire by adding to the board all the positions
 /// mentioned by the wire's path, starting at (0,0). If doing wire 2,
 /// look for crossings while we do it.
-fn plot_wire(board: &mut Board, wire_input: Vec<Instruction>, wire: Wire) -> i32 {
-    let mut smallest_manhattan_distance = 0;
+fn plot_wire(board: &mut Board, wire_input: Vec<Instruction>, wire: Wire) -> (i32, u32) {
+    // The two things we need to find (min_manhattan_distance for part 1 and
+    // min_combined_steps for part 2). We can do both with the same code.
+    let mut min_manhattan_distance = 0;
+    let mut min_combined_steps = 0;
 
     let mut x = 0;
     let mut y = 0;
@@ -102,11 +106,17 @@ fn plot_wire(board: &mut Board, wire_input: Vec<Instruction>, wire: Wire) -> i32
             } else {
                 // We don't actually need to write Wire2 into the board,
                 // we just need to check if there is a Wire1 at that position.
-                if board.contains_key(&(x, y)) {
+                if let Some(stored_steps) = board.get(&(x, y)) {
                     // This is a crossing point.
                     let this_manhattan_distance = x.abs() + y.abs();
-                    if this_manhattan_distance < smallest_manhattan_distance || smallest_manhattan_distance == 0 {
-                        smallest_manhattan_distance = this_manhattan_distance;
+
+                    if this_manhattan_distance < min_manhattan_distance || min_manhattan_distance == 0 {
+                        min_manhattan_distance = this_manhattan_distance;
+                    }
+
+                    let this_combined_steps = stored_steps + num_steps;
+                    if this_combined_steps < min_combined_steps || min_combined_steps == 0 {
+                        min_combined_steps = this_combined_steps;
                     }
                 }
             }
@@ -116,7 +126,7 @@ fn plot_wire(board: &mut Board, wire_input: Vec<Instruction>, wire: Wire) -> i32
         }
     }
 
-    smallest_manhattan_distance
+    (min_manhattan_distance, min_combined_steps)
 }
 
 fn parse_input(input: &str) -> Vec<Instruction> {
