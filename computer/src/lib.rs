@@ -32,10 +32,10 @@ pub enum Instruction {
 impl Instruction {
     /// Returns the increment to be applied to the instruction pointer
     /// after processing this instruction.
-    pub fn instruction_pointer_increment(&self) -> u8 {
+    pub fn instruction_pointer_increment(&self) -> usize {
         match *self {
-            Instruction::Add(..) => 3,
-            Instruction::Multiply(..) => 3,
+            Instruction::Add(..) => 4,
+            Instruction::Multiply(..) => 4,
             Instruction::Read(..) => 2,
             Instruction::Write(..) => 2,
             Instruction::Halt => panic!("Do not call instruction_pointer_increment() for Halt instructions"),
@@ -115,6 +115,9 @@ impl Instruction {
 
 }
 
+/// Helper type used when determining the parameter modes for an
+/// instruction. If a non-allowed parameter mode is detected, an
+/// error is returned.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum AllowedParameterMode {
     Position,
@@ -122,11 +125,21 @@ enum AllowedParameterMode {
     Either,
 }
 
+/// The possible parameters to an instruction. We use an enum to constrain
+/// the range of values that instances of this type can take (as opposed to
+/// using say, an i32). The numeric values represent the offset relative
+/// to the instruction pointer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum ParameterNumber {
-    One,
-    Two,
-    Three
+    One = 1,
+    Two = 2,
+    Three = 3,
+}
+
+impl ParameterNumber {
+    fn offset(&self) -> usize {
+        *self as usize
+    }
 }
 
 /// Helper function to pull out a single parameter mode.
@@ -163,6 +176,99 @@ fn decode_parameter_mode(inst: i32, prm_num: ParameterNumber, allowed: AllowedPa
             }
         },
         _ => Err(format!("In instruction {}, found invalid parameter mode {}", inst, mode))
+    }
+}
+
+/// Represents the virtual machine we are executing the program on.
+pub struct Computer {
+    instruction_pointer: usize,
+    program: Vec<i32>,
+}
+
+impl Computer {
+    pub fn load_program(program: Vec<i32>) -> Self {
+        Computer {
+            instruction_pointer: 0,
+            program: program
+        }
+    }
+
+    /// Executes the given program and returns the value left at
+    /// position 0 when execution is complete.
+    pub fn run(&mut self) -> Result<i32, String> {
+        loop {
+            let inst = self.next_instruction()?;
+
+            match inst {
+                Instruction::Add(p1, p2, p3) => {
+                    let p1_value = self.fetch_operand(ParameterNumber::One, p1);
+                    let p2_value = self.fetch_operand(ParameterNumber::Two, p2);
+                    let result = p1_value + p2_value;
+                    self.write_operand(ParameterNumber::Three, p3, result);
+                },
+
+                Instruction::Multiply(p1, p2, p3) => {
+                    let p1_value = self.fetch_operand(ParameterNumber::One, p1);
+                    let p2_value = self.fetch_operand(ParameterNumber::Two, p2);
+                    let result = p1_value * p2_value;
+                    self.write_operand(ParameterNumber::Three, p3, result);
+                },
+
+                Instruction::Read(ParameterMode) => {},
+                Instruction::Write(ParameterMode) => {},
+
+                Instruction::Halt => break,
+                _ => {},
+            }
+
+            self.instruction_pointer += inst.instruction_pointer_increment();
+        }
+
+        Ok(self.program[0])
+    }
+
+    pub fn run_and_print_result(&mut self) {
+        match self.run() {
+            Ok(result) => println!("SUCCESS: Result = {}", result),
+            Err(e) => println!("FAILURE: {}", e),
+        }
+    }
+
+    fn next_instruction(&self) -> Result<Instruction, String> {
+        Instruction::decode(self.program[self.instruction_pointer])
+    }
+
+    fn fetch_operand(&self, operand_number: ParameterNumber, mode: ParameterMode) -> i32 {
+        let offset = operand_number.offset();
+        let operand_index = self.instruction_pointer + offset;
+
+        match mode {
+            ParameterMode::Position => {
+                let address = self.program[operand_index];
+                if address < 0 {
+                    panic!("SIGSEGV: address = {}", address);
+                }
+                self.program[address as usize]
+            },
+            ParameterMode::Immediate => self.program[operand_index]
+        }
+    }
+
+    fn write_operand(&mut self, operand_number: ParameterNumber, mode: ParameterMode, value: i32) {
+        let offset = operand_number.offset();
+        let operand_index = self.instruction_pointer + offset;
+
+        match mode {
+            ParameterMode::Position => {
+                let address = self.program[operand_index];
+                if address < 0 {
+                    panic!("SIGSEGV: address = {}", address);
+                }
+                self.program[address as usize] = value;
+
+            },
+            ParameterMode::Immediate => panic!("FAULT: Cannot write to Immediate mode parameter"),
+        }
     }
 }
 
