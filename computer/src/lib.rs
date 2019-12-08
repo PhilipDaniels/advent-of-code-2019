@@ -214,8 +214,14 @@ impl Computer {
                     self.write_operand(ParameterNumber::Three, p3, result);
                 },
 
-                Instruction::Read(ParameterMode) => {},
-                Instruction::Write(ParameterMode) => {},
+                Instruction::Read(p1) => {
+                    let input = Self::read_input();
+                    self.write_operand(ParameterNumber::One, p1, input);
+                },
+                Instruction::Write(p1) => {
+                    let value = self.fetch_operand(ParameterNumber::One, p1);
+                    println!("{}", value);
+                },
 
                 Instruction::Halt => break,
                 _ => {},
@@ -231,6 +237,25 @@ impl Computer {
         match self.run() {
             Ok(result) => println!("SUCCESS: Result = {}", result),
             Err(e) => println!("FAILURE: {}", e),
+        }
+    }
+
+    fn read_input() -> i32 {
+        use std::io::Write;
+        use std::io::{stdout, stdin};
+
+        loop {
+            print!("Enter number: ");
+            stdout().flush().unwrap();
+            let mut ret = String::new();
+            stdin().read_line(&mut ret).expect("Failed to read from stdin");
+
+            match ret.trim().parse::<i32>() {
+                Ok(value) => return value,
+                Err(_) => {
+                    println!("\nNOT A VALID INTEGER. Try again.");
+                }
+            }
         }
     }
 
