@@ -10,16 +10,22 @@ pub enum ParameterMode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// A machine instruction.
 pub enum Instruction {
     // An Add instruction. Valid modes are Either, Either, Position.
+    // Adds its first two operands and stores the result in the third.
     Add(ParameterMode, ParameterMode, ParameterMode),
     // A Multiply instruction. Valid modes are Either, Either, Position.
+    // Multiplies its first two operands and stores the result in the third.
     Multiply(ParameterMode, ParameterMode, ParameterMode),
     // A Read instruction. Valid mode is Position.
+    // Reads a value from stdin and stores it in the address
+    // pointed to by its parameter.
     Read(ParameterMode),
     // A Write instruction. Valid mode is Either.
+    // Writes the value of its parameter to stdout.
     Write(ParameterMode),
-    // A Halt instruction. No valid parameters.
+    // A Halt instruction. Stops the computer. No valid parameters.
     Halt
 }
 
@@ -36,13 +42,14 @@ impl Instruction {
         }
     }
 
+    /// Decodes an instruction from a raw integer.
     pub fn decode(inst: i32) -> Result<Instruction, String> {
         use Instruction::*;
 
         // Include this as a sanity check so we don't start allowing
         // things like -3 to be valid instructions.
         if inst < 1 || inst > 99_999 {
-            return Err(format!("Bad instruction: {}", inst));
+            return Err(format!("Bad instruction {}, out of range", inst));
         }
 
         // The opcode is in the rightmost two digits, which we can extract
@@ -50,59 +57,53 @@ impl Instruction {
         let opcode = match inst % 100 {
             n @ 1..=4 => n,
             99 => 99,
-            _ => return Err(format!("Bad instruction, opcode not valid: {}", inst))
+            _ => return Err(format!("Bad instruction {}, opcode not valid", inst))
         };
 
-        // Then shift everything over so that 1002 becomes 10.
-        // Process at most 3 rightmost digits.
-        let mut wip = inst / 100;
-
+        // Now pull out the parameter modes, being careful to *only* accept
+        // valid instructions (by looking at the whole input). This way we will
+        // get an early warning if our program goes wrong and starts to
+        // write junk into the wrong addresses.
         let instruction = match opcode {
             1 => {
-                let p1 = decode_parameter_mode(wip, AllowedParameterMode::Either)?;
-                wip /= 10;
-                let p2 = decode_parameter_mode(wip, AllowedParameterMode::Either)?;
-                wip /= 10;
-                let p3 = decode_parameter_mode(wip, AllowedParameterMode::Position)?;
-                if wip > 0 {
-                    return Err(format!("Invalid instruction, extraneous digits: {}", inst));
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
+                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, AllowedParameterMode::Either)?;
+                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, AllowedParameterMode::Position)?;
+                if inst / 10000 > 0 {
+                    return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
                 Add(p1, p2, p3)
             },
 
             2 => {
-                let p1 = decode_parameter_mode(wip, AllowedParameterMode::Either)?;
-                wip /= 10;
-                let p2 = decode_parameter_mode(wip, AllowedParameterMode::Either)?;
-                wip /= 10;
-                let p3 = decode_parameter_mode(wip, AllowedParameterMode::Position)?;
-                if wip > 0 {
-                    return Err(format!("Invalid instruction, extraneous digits: {}", inst));
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
+                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, AllowedParameterMode::Either)?;
+                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, AllowedParameterMode::Position)?;
+                if inst / 10000 > 0 {
+                    return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
                 Multiply(p1, p2, p3)
             },
 
             3 => {
-                let p1 = decode_parameter_mode(wip, AllowedParameterMode::Position)?;
-                wip /= 10;
-                if wip > 0 {
-                    return Err(format!("Invalid instruction, extraneous digits: {}", inst));
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Position)?;
+                if inst / 100 > 0 {
+                    return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
                 Read(p1)
             },
 
             4 => {
-                let p1 = decode_parameter_mode(wip, AllowedParameterMode::Either)?;
-                wip /= 10;
-                if wip > 0 {
-                    return Err(format!("Invalid instruction, extraneous digits: {}", inst));
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
+                if inst / 100 > 1 {
+                    return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
                 Write(p1)
             },
 
             99 => {
-                if wip > 0 {
-                    return Err(format!("Invalid instruction, invalid parameter mode: {}", inst));
+                if inst / 100 > 0 {
+                    return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
                 Halt
             },
@@ -121,31 +122,47 @@ enum AllowedParameterMode {
     Either,
 }
 
-fn decode_parameter_mode(i: i32, allowed: AllowedParameterMode) -> Result<ParameterMode, String> {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum ParameterNumber {
+    One,
+    Two,
+    Three
+}
+
+/// Helper function to pull out a single parameter mode.
+fn decode_parameter_mode(inst: i32, prm_num: ParameterNumber, allowed: AllowedParameterMode) -> Result<ParameterMode, String> {
     use self::ParameterMode::*;
 
+    let i = inst / match prm_num {
+        ParameterNumber::One => 100,
+        ParameterNumber::Two => 1000,
+        ParameterNumber::Three => 10000,
+    };
+
     let mode = i % 10;
+
+    //println!("inst = {}, i = {}, mode = {}, prm_num = {:?}, allowed = {:?}", inst, i, mode, prm_num, allowed);
 
     match mode {
         0 => {
             if allowed == AllowedParameterMode::Position || allowed == AllowedParameterMode::Either {
                 Ok(Position)
             } else {
-                let msg = format!("Found parameter mode {}, which does not comply with the allowed mode {:?}",
-                    mode, allowed);
-                Err(msg)
+                Err(format!(
+                    "In instruction {}, found parameter mode {}, which does not comply with the allowed mode {:?}",
+                    inst, mode, allowed))
             }
         },
         1 => {
             if allowed == AllowedParameterMode::Immediate || allowed == AllowedParameterMode::Either {
                 Ok(Immediate)
             } else {
-                let msg = format!("Found parameter mode {}, which does not comply with the allowed mode {:?}",
-                    mode, allowed);
-                Err(msg)
+                Err(format!(
+                    "In instruction {}, found parameter mode {}, which does not comply with the allowed mode {:?}",
+                    inst, mode, allowed))
             }
         },
-        _ => Err(format!("Invalid parameter mode {} in partial instruction: {}", mode, i))
+        _ => Err(format!("In instruction {}, found invalid parameter mode {}", inst, mode))
     }
 }
 
