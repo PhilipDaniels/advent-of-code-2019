@@ -12,20 +12,36 @@ pub enum ParameterMode {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// A machine instruction.
 pub enum Instruction {
-    // An Add instruction. Valid modes are Either, Either, Position.
-    // Adds its first two operands and stores the result in the third.
+    /// An Add instruction. Valid modes are Either, Either, Position.
+    /// Adds its first two operands and stores the result in the third.
     Add(ParameterMode, ParameterMode, ParameterMode),
-    // A Multiply instruction. Valid modes are Either, Either, Position.
-    // Multiplies its first two operands and stores the result in the third.
+    /// A Multiply instruction. Valid modes are Either, Either, Position.
+    /// Multiplies its first two operands and stores the result in the third.
     Multiply(ParameterMode, ParameterMode, ParameterMode),
-    // A Read instruction. Valid mode is Position.
-    // Reads a value from stdin and stores it in the address
-    // pointed to by its parameter.
+    /// A Read instruction. Valid mode is Position.
+    /// Reads a value from stdin and stores it in the address
+    /// pointed to by its parameter.
     Read(ParameterMode),
-    // A Write instruction. Valid mode is Either.
-    // Writes the value of its parameter to stdout.
+    /// A Write instruction. Valid mode is Either.
+    /// Writes the value of its parameter to stdout.
     Write(ParameterMode),
-    // A Halt instruction. Stops the computer. No valid parameters.
+    /// Jump if true instruction. Valid modes are Either, Either.
+    /// If the first parameter is non-zero, it sets the instruction pointer
+    /// to the value from the second parameter. Otherwise, it does nothing.
+    JumpIfTrue(ParameterMode, ParameterMode),
+    /// Jump if false instruction. Valid modes are Either, Either.
+    /// If the first parameter is zero, it sets the instruction pointer to the
+    /// value from the second parameter. Otherwise, it does nothing.
+    JumpIfFalse(ParameterMode, ParameterMode),
+    /// Less Than instruction. Valid modes are Either, Either, Position.
+    /// If the first parameter is less than the second parameter, it stores 1
+    /// in the position given by the third parameter. Otherwise, it stores 0.
+    LessThan(ParameterMode, ParameterMode, ParameterMode),
+    /// Equals instruction. Valid modes are Either, Either, Position.
+    /// If the first parameter is equal to the second parameter, it stores 1
+    /// in the position given by the third parameter. Otherwise, it stores 0.
+    Equals(ParameterMode, ParameterMode, ParameterMode),
+    /// A Halt instruction. Stops the computer. No valid parameters.
     Halt
 }
 
@@ -38,6 +54,10 @@ impl Instruction {
             Instruction::Multiply(..) => 4,
             Instruction::Read(..) => 2,
             Instruction::Write(..) => 2,
+            Instruction::JumpIfTrue(..) => 3,   // In the case where it does nothing.
+            Instruction::JumpIfFalse(..) => 3,  // In the case where it does nothing.
+            Instruction::LessThan(..) => 4,
+            Instruction::Equals(..) => 4,
             Instruction::Halt => panic!("Do not call instruction_pointer_increment() for Halt instructions"),
         }
     }
@@ -55,7 +75,7 @@ impl Instruction {
         // The opcode is in the rightmost two digits, which we can extract
         // by using the remainder operator.
         let opcode = match inst % 100 {
-            n @ 1..=4 => n,
+            n @ 1..=8 => n,
             99 => 99,
             _ => return Err(format!("Bad instruction {}, opcode not valid", inst))
         };
@@ -99,6 +119,44 @@ impl Instruction {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
                 Write(p1)
+            },
+
+            5 => {
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
+                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, AllowedParameterMode::Either)?;
+                if inst / 10000 > 0 {
+                    return Err(format!("Invalid instruction {}, superfluous digits", inst));
+                }
+                JumpIfTrue(p1, p2)
+            },
+
+            6 => {
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
+                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, AllowedParameterMode::Either)?;
+                if inst / 10000 > 0 {
+                    return Err(format!("Invalid instruction {}, superfluous digits", inst));
+                }
+                JumpIfFalse(p1, p2)
+            },
+
+            7 => {
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
+                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, AllowedParameterMode::Either)?;
+                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, AllowedParameterMode::Position)?;
+                if inst / 10000 > 0 {
+                    return Err(format!("Invalid instruction {}, superfluous digits", inst));
+                }
+                LessThan(p1, p2, p3)
+            },
+
+            8 => {
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
+                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, AllowedParameterMode::Either)?;
+                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, AllowedParameterMode::Position)?;
+                if inst / 10000 > 0 {
+                    return Err(format!("Invalid instruction {}, superfluous digits", inst));
+                }
+                Equals(p1, p2, p3)
             },
 
             99 => {
@@ -223,8 +281,39 @@ impl Computer {
                     println!("{}", value);
                 },
 
+                Instruction::JumpIfTrue(p1, p2) => {
+                    let p1_value = self.fetch_operand(ParameterNumber::One, p1);
+                    if p1_value != 0 {
+                        let new_ip = self.fetch_operand(ParameterNumber::Two, p2) as usize;
+                        self.instruction_pointer = new_ip;
+                        continue;
+                    }
+                },
+
+                Instruction::JumpIfFalse(p1, p2) => {
+                    let p1_value = self.fetch_operand(ParameterNumber::One, p1);
+                    if p1_value == 0 {
+                        let new_ip = self.fetch_operand(ParameterNumber::Two, p2) as usize;
+                        self.instruction_pointer = new_ip;
+                        continue;
+                    }
+                },
+
+                Instruction::LessThan(p1, p2, p3) => {
+                    let p1_value = self.fetch_operand(ParameterNumber::One, p1);
+                    let p2_value = self.fetch_operand(ParameterNumber::Two, p2);
+                    let result = if p1_value < p2_value { 1 } else { 0 };
+                    self.write_operand(ParameterNumber::Three, p3, result);
+                },
+
+                Instruction::Equals(p1, p2, p3) => {
+                    let p1_value = self.fetch_operand(ParameterNumber::One, p1);
+                    let p2_value = self.fetch_operand(ParameterNumber::Two, p2);
+                    let result = if p1_value == p2_value { 1 } else { 0 };
+                    self.write_operand(ParameterNumber::Three, p3, result);
+                },
+
                 Instruction::Halt => break,
-                _ => {},
             }
 
             self.instruction_pointer += inst.instruction_pointer_increment();
@@ -311,7 +400,6 @@ mod tests {
 
     #[test]
     pub fn decode_unknown_opcode() {
-        assert!(Instruction::decode(5).is_err());
         assert!(Instruction::decode(98).is_err());
     }
 
@@ -354,5 +442,37 @@ mod tests {
         assert_eq!(Instruction::decode(4).unwrap(), Write(Position));
         assert_eq!(Instruction::decode(104).unwrap(), Write(Immediate));
         assert!(Instruction::decode(1004).is_err(), "Too many digits");
+    }
+
+    #[test]
+    pub fn decode_jump_if_true() {
+        assert_eq!(Instruction::decode(5).unwrap(), JumpIfTrue(Position, Position));
+        assert_eq!(Instruction::decode(105).unwrap(), JumpIfTrue(Immediate, Position));
+        assert_eq!(Instruction::decode(1005).unwrap(), JumpIfTrue(Position, Immediate));
+        assert!(Instruction::decode(10005).is_err(), "Too many digits");
+    }
+
+    #[test]
+    pub fn decode_jump_if_false() {
+        assert_eq!(Instruction::decode(6).unwrap(), JumpIfFalse(Position, Position));
+        assert_eq!(Instruction::decode(106).unwrap(), JumpIfFalse(Immediate, Position));
+        assert_eq!(Instruction::decode(1006).unwrap(), JumpIfFalse(Position, Immediate));
+        assert!(Instruction::decode(10006).is_err(), "Too many digits");
+    }
+
+    #[test]
+    pub fn decode_less_than() {
+        assert_eq!(Instruction::decode(7).unwrap(), LessThan(Position, Position, Position));
+        assert_eq!(Instruction::decode(107).unwrap(), LessThan(Immediate, Position, Position));
+        assert_eq!(Instruction::decode(1007).unwrap(), LessThan(Position, Immediate, Position));
+        assert!(Instruction::decode(10007).is_err(), "Write prm must be Position mode");
+    }
+
+    #[test]
+    pub fn decode_equals() {
+        assert_eq!(Instruction::decode(8).unwrap(), Equals(Position, Position, Position));
+        assert_eq!(Instruction::decode(108).unwrap(), Equals(Immediate, Position, Position));
+        assert_eq!(Instruction::decode(1008).unwrap(), Equals(Position, Immediate, Position));
+        assert!(Instruction::decode(10008).is_err(), "Write prm must be Position mode");
     }
 }
