@@ -20,16 +20,18 @@ fn get_puzzle_input() -> Vec<(String, String)> {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct Body {
     name: String,
-    //orbits: String,
-    orbitted_by: Vec<String>
+    orbits: String,
+    orbitted_by: Vec<String>,
+    depth: usize,
 }
 
 impl Body {
     fn new(name: String) -> Self {
         Body {
             name: name,
-            // orbits: "".to_string(),
+            orbits: "".to_string(),
             orbitted_by: vec![],
+            depth: 0,
         }
     }
 }
@@ -42,10 +44,45 @@ fn build_orbit_graph(orbits: Vec<(String, String)>) -> OrbitGraph {
     for (orbitted_body, orbitting_body) in orbits {
         let b = graph.entry(orbitted_body.clone()).or_insert(Body::new(orbitted_body.clone()));
         b.orbitted_by.push(orbitting_body.clone());
+
+        let b2 = graph.entry(orbitting_body.clone()).or_insert(Body::new(orbitting_body.clone()));
+        b2.orbits = orbitted_body.clone();
     }
 
     graph
 }
+
+fn calc_node_depths(graph: &OrbitGraph) -> Vec<Body> {
+    let mut all_nodes = Vec::with_capacity(graph.len());
+    calc_node_depth(&mut all_nodes, graph, 0, "COM");
+    all_nodes
+}
+
+fn calc_node_depth(done_nodes: &mut Vec<Body>, graph: &OrbitGraph, current_depth: usize, current_node: &str) {
+    let mut current_node = graph.get(current_node).unwrap().clone();
+    current_node.depth = current_depth;
+
+    for child in &current_node.orbitted_by {
+        calc_node_depth(done_nodes, graph, current_depth + 1, &child);
+    }
+
+    done_nodes.push(current_node);
+
+
+    // match graph.get(current_node) {
+    //     None => None,
+    //     Some(node) => {
+    //         let children = &node.orbitted_by;
+
+    //         let child_orbits: i32 = children.iter()
+    //             .map(|child| num_orbits_of_body(graph, current_depth + 1, child))
+    //             .sum();
+
+    //         ((current_depth + 1) * children.len() as i32) + child_orbits
+    //     }
+    // }
+}
+
 
 fn calculate_number_of_orbits(graph: &OrbitGraph) -> usize {
     num_orbits_of_body(graph, 0, "COM") as usize
@@ -85,9 +122,8 @@ fn main() {
 mod tests {
     use super::*;
 
-    #[test]
-    pub fn test_example_input() {
-        let input = get_input("COM)B
+    fn get_example_input() -> Vec<(String, String)> {
+        get_input("COM)B
 B)C
 C)D
 D)E
@@ -97,8 +133,12 @@ G)H
 D)I
 E)J
 J)K
-K)L");
+K)L")
 
+    }
+    #[test]
+    pub fn test_example_input() {
+        let input = get_example_input();
         let graph = build_orbit_graph(input);
         let num_orbits = calculate_number_of_orbits(&graph);
         assert_eq!(42, num_orbits);
@@ -110,5 +150,16 @@ K)L");
         let graph = build_orbit_graph(input);
         let num_orbits = calculate_number_of_orbits(&graph);
         assert_eq!(num_orbits, 119831);
+    }
+
+    #[test]
+    pub fn calc_node_depths_test() {
+        let input = get_example_input();
+        let graph = build_orbit_graph(input);
+        let mut all_nodes_with_depths = calc_node_depths(&graph);
+        all_nodes_with_depths.sort();
+        //println!("all_nodes_with_depths = \n{:#?}", all_nodes_with_depths);
+        let sum_orbits: usize = all_nodes_with_depths.iter().map(|body| body.depth).sum();
+        assert_eq!(sum_orbits, 42);
     }
 }
