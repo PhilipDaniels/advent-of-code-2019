@@ -38,8 +38,13 @@ impl Body {
 
 type OrbitGraph = HashMap::<String, Body>;
 
+fn build_graph_with_depths(orbits: Vec<(String, String)>) -> OrbitGraph {
+    let graph = build_orbit_graph(orbits);
+    calc_node_depths(&graph)
+}
+
 fn build_orbit_graph(orbits: Vec<(String, String)>) -> OrbitGraph {
-    let mut graph = OrbitGraph::new();
+    let mut graph = OrbitGraph::with_capacity(orbits.len());
 
     for (orbitted_body, orbitting_body) in orbits {
         let b = graph.entry(orbitted_body.clone()).or_insert(Body::new(orbitted_body.clone()));
@@ -52,10 +57,20 @@ fn build_orbit_graph(orbits: Vec<(String, String)>) -> OrbitGraph {
     graph
 }
 
-fn calc_node_depths(graph: &OrbitGraph) -> Vec<Body> {
+/// Builds a new graph with the node depth of each node updated
+/// to be its correct value. This is somewhat functional-programming
+/// style, though it is horribly inefficient I found it the easiest
+/// way to get it working (recursion on mutable structures is hard).
+fn calc_node_depths(graph: &OrbitGraph) -> OrbitGraph {
     let mut all_nodes = Vec::with_capacity(graph.len());
     calc_node_depth(&mut all_nodes, graph, 0, "COM");
-    all_nodes
+
+    let mut new_graph = OrbitGraph::with_capacity(all_nodes.len());
+    for node in all_nodes {
+        new_graph.insert(node.name.clone(), node);
+    }
+
+    new_graph
 }
 
 fn calc_node_depth(done_nodes: &mut Vec<Body>, graph: &OrbitGraph, current_depth: usize, current_node: &str) {
@@ -67,25 +82,16 @@ fn calc_node_depth(done_nodes: &mut Vec<Body>, graph: &OrbitGraph, current_depth
     }
 
     done_nodes.push(current_node);
-
-
-    // match graph.get(current_node) {
-    //     None => None,
-    //     Some(node) => {
-    //         let children = &node.orbitted_by;
-
-    //         let child_orbits: i32 = children.iter()
-    //             .map(|child| num_orbits_of_body(graph, current_depth + 1, child))
-    //             .sum();
-
-    //         ((current_depth + 1) * children.len() as i32) + child_orbits
-    //     }
-    // }
 }
 
+trait OrbitCount {
+    fn num_orbits(&self) -> usize;
+}
 
-fn calculate_number_of_orbits(graph: &OrbitGraph) -> usize {
-    num_orbits_of_body(graph, 0, "COM") as usize
+ impl OrbitCount for OrbitGraph {
+    fn num_orbits(&self) -> usize {
+        self.values().map(|n| n.depth).sum()
+    }
 }
 
 /* If you draw out the graph in their example, the total number of orbits
@@ -94,28 +100,14 @@ fn calculate_number_of_orbits(graph: &OrbitGraph) -> usize {
 
    There is probably a better way of doing this, but it gets the right answer.
 */
-fn num_orbits_of_body(graph: &OrbitGraph, current_depth: i32, current_node: &str) -> i32 {
-    match graph.get(current_node) {
-        None => 0,
-        Some(node) => {
-            let children = &node.orbitted_by;
-
-            let child_orbits: i32 = children.iter()
-                .map(|child| num_orbits_of_body(graph, current_depth + 1, child))
-                .sum();
-
-            ((current_depth + 1) * children.len() as i32) + child_orbits
-        }
-    }
-}
-
-
 fn main() {
     let input = get_puzzle_input();
-    let orbit_graph = build_orbit_graph(input);
-    let num_orbits = calculate_number_of_orbits(&orbit_graph);
-    // 119831 is the right answer.
-    println!("Total number of orbits = {}", num_orbits);
+    let orbit_graph = build_graph_with_depths(input);
+
+    println!("Total number of orbits = {}", orbit_graph.num_orbits());
+    assert_eq!(119831, orbit_graph.num_orbits());
+
+
 }
 
 #[cfg(test)]
@@ -139,27 +131,14 @@ K)L")
     #[test]
     pub fn test_example_input() {
         let input = get_example_input();
-        let graph = build_orbit_graph(input);
-        let num_orbits = calculate_number_of_orbits(&graph);
-        assert_eq!(42, num_orbits);
+        let orbit_graph = build_graph_with_depths(input);
+        assert_eq!(42, orbit_graph.num_orbits());
     }
 
     #[test]
     pub fn test_puzzle_input() {
         let input = get_puzzle_input();
-        let graph = build_orbit_graph(input);
-        let num_orbits = calculate_number_of_orbits(&graph);
-        assert_eq!(num_orbits, 119831);
-    }
-
-    #[test]
-    pub fn calc_node_depths_test() {
-        let input = get_example_input();
-        let graph = build_orbit_graph(input);
-        let mut all_nodes_with_depths = calc_node_depths(&graph);
-        all_nodes_with_depths.sort();
-        //println!("all_nodes_with_depths = \n{:#?}", all_nodes_with_depths);
-        let sum_orbits: usize = all_nodes_with_depths.iter().map(|body| body.depth).sum();
-        assert_eq!(sum_orbits, 42);
+        let orbit_graph = build_graph_with_depths(input);
+        assert_eq!(119831, orbit_graph.num_orbits());
     }
 }
