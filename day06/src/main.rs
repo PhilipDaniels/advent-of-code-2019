@@ -71,6 +71,10 @@ impl OrbitGraph {
         self.0.entry(key)
     }
 
+    fn get(&self, key: &str) -> Option<&Body> {
+        self.0.get(key)
+    }
+
     /// Calculates the depth of each node. We use interior mutability
     /// to remember these for part 2.
     fn calc_node_depth(&self, current_depth: usize, current_node: &str) {
@@ -99,6 +103,44 @@ fn main() {
 
     println!("Total number of orbits = {}", orbit_graph.total_num_orbits());
     assert_eq!(119831, orbit_graph.total_num_orbits());
+
+
+    // Part 2.
+    let santa = orbit_graph.get("SAN").unwrap();
+    let santa_body = orbit_graph.get(&santa.orbits).unwrap();
+    let me = orbit_graph.get("YOU").unwrap();
+    let me_body = orbit_graph.get(&me.orbits).unwrap();
+
+    let mut num_transfers = 0;
+    let (mut lowest, mut highest) = if santa_body.depth.get() > me_body.depth.get() {
+        (santa_body, me_body)
+    } else {
+        (me_body, santa_body)
+    };
+
+    // Before any possibility of finding the ancestor we must have
+    // equal depths (and even then they probably are - in fact are -
+    // in separate branches of the tree.)
+    println!("SAN = {:?}\nYOU = {:?}\nlowest = {:?}", santa, me, lowest);
+    while lowest.depth.get() != highest.depth.get() {
+        num_transfers += 1;
+        lowest = orbit_graph.get(&lowest.orbits).unwrap();
+    }
+
+    println!("SAN = {:?}\nYOU = {:?}\nlowest = {:?}\nhighest = {:?}", santa, me, lowest, highest);
+
+    // Now keep going up in *both* branches until we find a common node.
+    while lowest.name != highest.name {
+        num_transfers += 2;
+        lowest = orbit_graph.get(&lowest.orbits).unwrap();
+        highest = orbit_graph.get(&highest.orbits).unwrap();
+    }
+
+    println!("SAN = {:?}\nYOU = {:?}\nlowest = {:?}\nhighest = {:?}", santa, me, lowest, highest);
+    // First guess = 181, which is too low.
+    // Second guess is 322 : needed to add 2 in the second loop!
+    println!("Num transfers = {}", num_transfers);
+    assert_eq!(322, num_transfers);
 }
 
 #[cfg(test)]
