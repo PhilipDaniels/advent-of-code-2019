@@ -62,26 +62,21 @@ fn build_orbit_graph(orbits: Vec<(String, String)>) -> OrbitGraph {
 /// style, though it is horribly inefficient I found it the easiest
 /// way to get it working (recursion on mutable structures is hard).
 fn calc_node_depths(graph: &OrbitGraph) -> OrbitGraph {
-    let mut all_nodes = Vec::with_capacity(graph.len());
-    calc_node_depth(&mut all_nodes, graph, 0, "COM");
-
-    let mut new_graph = OrbitGraph::with_capacity(all_nodes.len());
-    for node in all_nodes {
-        new_graph.insert(node.name.clone(), node);
-    }
+    let mut new_graph = OrbitGraph::with_capacity(graph.len());
+    calc_node_depth(&mut new_graph, graph, 0, "COM");
 
     new_graph
 }
 
-fn calc_node_depth(done_nodes: &mut Vec<Body>, graph: &OrbitGraph, current_depth: usize, current_node: &str) {
+fn calc_node_depth(new_graph: &mut OrbitGraph, graph: &OrbitGraph, current_depth: usize, current_node: &str) {
     let mut current_node = graph.get(current_node).unwrap().clone();
     current_node.depth = current_depth;
 
     for child in &current_node.orbitted_by {
-        calc_node_depth(done_nodes, graph, current_depth + 1, &child);
+        calc_node_depth(new_graph, graph, current_depth + 1, &child);
     }
 
-    done_nodes.push(current_node);
+    new_graph.insert(current_node.name.clone(), current_node);
 }
 
 trait OrbitCount {
