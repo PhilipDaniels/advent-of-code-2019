@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::cell::Cell;
+use std::collections::hash_map::Entry;
 
 fn get_input(raw_input: &str) -> Vec<(String, String)> {
     raw_input.lines()
@@ -37,17 +38,12 @@ impl Body {
     }
 }
 
-type OrbitGraph = HashMap::<String, Body>;
+struct OrbitGraph(HashMap::<String, Body>);
 
-trait OrbitGraphMethods {
-    fn build_graph(orbits: Vec<(String, String)>) -> Self;
-    fn calc_node_depth(&self, current_depth: usize, current_node: &str);
-    fn total_num_orbits(&self) -> usize;
-}
-
- impl OrbitGraphMethods for OrbitGraph {
-    fn build_graph(orbits: Vec<(String, String)>) -> Self {
-        let mut graph = OrbitGraph::with_capacity(orbits.len());
+impl OrbitGraph {
+    /// Creates a new OrbitGraph from the given orbit pairs.
+    fn new(orbits: Vec<(String, String)>) -> Self {
+        let mut graph = Self::with_capacity(orbits.len());
 
         for (orbitted_body, orbitting_body) in orbits {
             let b = graph.entry(orbitted_body.clone()).or_insert(Body::new(orbitted_body.clone()));
@@ -62,8 +58,18 @@ trait OrbitGraphMethods {
         graph
     }
 
+    /// Constructs a new OrbitGraph with specified capacity.
+    fn with_capacity(capacity: usize) -> Self {
+        Self(HashMap::with_capacity(capacity))
+    }
+
+    /// Hmm, entry requires a moved, not borrowed, key.
+    fn entry(&mut self, key: String) -> Entry<String, Body> {
+        self.0.entry(key)
+    }
+
     fn calc_node_depth(&self, current_depth: usize, current_node: &str) {
-        let mut current_node = self.get(current_node).unwrap();
+        let mut current_node = self.0.get(current_node).unwrap();
         current_node.depth.set(current_depth);
 
         for child in &current_node.orbitted_by {
@@ -72,7 +78,7 @@ trait OrbitGraphMethods {
     }
 
     fn total_num_orbits(&self) -> usize {
-        self.values().map(|n| n.depth.get()).sum()
+        self.0.values().map(|n| n.depth.get()).sum()
     }
 }
 
@@ -84,12 +90,10 @@ trait OrbitGraphMethods {
 */
 fn main() {
     let input = get_puzzle_input();
-    let orbit_graph = OrbitGraph::build_graph(input);
+    let orbit_graph = OrbitGraph::new(input);
 
     println!("Total number of orbits = {}", orbit_graph.total_num_orbits());
     assert_eq!(119831, orbit_graph.total_num_orbits());
-
-
 }
 
 #[cfg(test)]
@@ -113,14 +117,14 @@ K)L")
     #[test]
     pub fn test_example_input() {
         let input = get_example_input();
-        let orbit_graph = OrbitGraph::build_graph(input);
+        let orbit_graph = OrbitGraph::new(input);
         assert_eq!(42, orbit_graph.total_num_orbits());
     }
 
     #[test]
     pub fn test_puzzle_input() {
         let input = get_puzzle_input();
-        let orbit_graph = OrbitGraph::build_graph(input);
+        let orbit_graph = OrbitGraph::new(input);
         assert_eq!(119831, orbit_graph.total_num_orbits());
     }
 }
