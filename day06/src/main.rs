@@ -2,19 +2,19 @@ use std::collections::HashMap;
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
 
-fn get_input(raw_input: &str) -> Vec<(String, String)> {
+fn get_input(raw_input: &str) -> Vec<(&str, &str)> {
     raw_input.lines()
         .map(|s| {
             let mut parts_iterator = s.split(')');
             (
-                parts_iterator.next().unwrap().to_string(),
-                parts_iterator.next().unwrap().to_string()
+                parts_iterator.next().unwrap(),
+                parts_iterator.next().unwrap()
             )
         })
         .collect()
 }
 
-fn get_puzzle_input() -> Vec<(String, String)> {
+fn get_puzzle_input() -> Vec<(&'static str, &'static str)> {
     let data = include_str!("input.txt");
     get_input(data)
 }
@@ -41,20 +41,23 @@ impl Body {
 struct OrbitGraph(HashMap::<String, Body>);
 
 impl OrbitGraph {
+    const ROOT_NODE: &'static str = "COM";
+
     /// Creates a new OrbitGraph from the given orbit pairs.
-    fn new(orbits: Vec<(String, String)>) -> Self {
+    fn new(orbits: Vec<(&str, &str)>) -> Self {
         let mut graph = Self::with_capacity(orbits.len());
 
         for (orbitted_body, orbitting_body) in orbits {
-            let b = graph.entry(orbitted_body.clone()).or_insert(Body::new(orbitted_body.clone()));
-            b.orbitted_by.push(orbitting_body.clone());
+            let b = graph.entry(orbitted_body.to_string())
+                .or_insert(Body::new(orbitted_body.to_string()));
+            b.orbitted_by.push(orbitting_body.to_string());
 
-            let b2 = graph.entry(orbitting_body.clone()).or_insert(Body::new(orbitting_body.clone()));
-            b2.orbits = orbitted_body.clone();
+            let b2 = graph.entry(orbitting_body.to_string())
+                .or_insert(Body::new(orbitting_body.to_string()));
+            b2.orbits = orbitted_body.to_string();
         }
 
-        // Now calculate the node depths.
-        graph.calc_node_depth(0, "COM");
+        graph.calc_node_depth(0, Self::ROOT_NODE);
         graph
     }
 
@@ -68,6 +71,8 @@ impl OrbitGraph {
         self.0.entry(key)
     }
 
+    /// Calculates the depth of each node. We use interior mutability
+    /// to remember these for part 2.
     fn calc_node_depth(&self, current_depth: usize, current_node: &str) {
         let mut current_node = self.0.get(current_node).unwrap();
         current_node.depth.set(current_depth);
@@ -100,7 +105,7 @@ fn main() {
 mod tests {
     use super::*;
 
-    fn get_example_input() -> Vec<(String, String)> {
+    fn get_example_input() -> Vec<(&'static str, &'static str)> {
         get_input("COM)B
 B)C
 C)D
