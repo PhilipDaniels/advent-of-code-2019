@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::cell::Cell;
 
 fn get_input(raw_input: &str) -> Vec<(String, String)> {
     raw_input.lines()
@@ -17,12 +18,12 @@ fn get_puzzle_input() -> Vec<(String, String)> {
     get_input(data)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Body {
     name: String,
     orbits: String,
     orbitted_by: Vec<String>,
-    depth: usize,
+    depth: Cell<usize>,
 }
 
 impl Body {
@@ -31,7 +32,7 @@ impl Body {
             name: name,
             orbits: "".to_string(),
             orbitted_by: vec![],
-            depth: 0,
+            depth: Cell::new(0),
         }
     }
 }
@@ -70,7 +71,7 @@ fn calc_node_depths(graph: &OrbitGraph) -> OrbitGraph {
 
 fn calc_node_depth(new_graph: &mut OrbitGraph, graph: &OrbitGraph, current_depth: usize, current_node: &str) {
     let mut current_node = graph.get(current_node).unwrap().clone();
-    current_node.depth = current_depth;
+    current_node.depth.set(current_depth);
 
     for child in &current_node.orbitted_by {
         calc_node_depth(new_graph, graph, current_depth + 1, &child);
@@ -85,7 +86,7 @@ trait OrbitCount {
 
  impl OrbitCount for OrbitGraph {
     fn num_orbits(&self) -> usize {
-        self.values().map(|n| n.depth).sum()
+        self.values().map(|n| n.depth.get()).sum()
     }
 }
 
