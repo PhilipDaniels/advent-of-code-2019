@@ -239,8 +239,8 @@ fn decode_parameter_mode(inst: i32, prm_num: ParameterNumber, allowed: AllowedPa
 
 /// Represents the IO that the computer is capable of.
 pub trait ComputerIo {
-    fn read(&self, message: &str) -> i32;
-    fn write(&self, message: &str);
+    fn read(&mut self, message: &str) -> i32;
+    fn write(&mut self, message: &str);
 }
 
 /// The default implementation of `ComputerIo` reads from stdin and
@@ -254,7 +254,7 @@ impl StandardComputerIoSystem {
 }
 
 impl ComputerIo for StandardComputerIoSystem {
-    fn read(&self, message: &str) -> i32 {
+    fn read(&mut self, message: &str) -> i32 {
         use std::io::Write;
         use std::io::{stdout, stdin};
 
@@ -273,7 +273,7 @@ impl ComputerIo for StandardComputerIoSystem {
         }
     }
 
-    fn write(&self, message: &str) {
+    fn write(&mut self, message: &str) {
         println!("{}", message);
     }
 }
@@ -282,7 +282,7 @@ impl ComputerIo for StandardComputerIoSystem {
 pub struct Computer<I> {
     instruction_pointer: usize,
     program: Vec<i32>,
-    io_system: I,
+    pub io_system: I,
 }
 
 impl<I> Computer<I>
