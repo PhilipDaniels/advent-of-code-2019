@@ -252,13 +252,14 @@ impl StandardComputerIoSystem {
         Self {}
     }
 }
+
 impl ComputerIo for StandardComputerIoSystem {
     fn read(&self, message: &str) -> i32 {
         use std::io::Write;
         use std::io::{stdout, stdin};
 
         loop {
-            print!("Enter number: ");
+            print!("{}", message);
             stdout().flush().unwrap();
             let mut ret = String::new();
             stdin().read_line(&mut ret).expect("Failed to read from stdin");
@@ -317,12 +318,12 @@ impl<I> Computer<I>
                 },
 
                 Instruction::Read(p1) => {
-                    let input = Self::read_input();
+                    let input = self.io_system.read("Enter number: ");
                     self.write_operand(ParameterNumber::One, p1, input);
                 },
                 Instruction::Write(p1) => {
                     let value = self.fetch_operand(ParameterNumber::One, p1);
-                    println!("{}", value);
+                    self.io_system.write(&value.to_string());
                 },
 
                 Instruction::JumpIfTrue(p1, p2) => {
@@ -370,25 +371,6 @@ impl<I> Computer<I>
         match self.run() {
             Ok(result) => println!("SUCCESS: Result = {}", result),
             Err(e) => println!("FAILURE: {}", e),
-        }
-    }
-
-    fn read_input() -> i32 {
-        use std::io::Write;
-        use std::io::{stdout, stdin};
-
-        loop {
-            print!("Enter number: ");
-            stdout().flush().unwrap();
-            let mut ret = String::new();
-            stdin().read_line(&mut ret).expect("Failed to read from stdin");
-
-            match ret.trim().parse::<i32>() {
-                Ok(value) => return value,
-                Err(_) => {
-                    println!("\nNOT A VALID INTEGER. Try again.");
-                }
-            }
         }
     }
 

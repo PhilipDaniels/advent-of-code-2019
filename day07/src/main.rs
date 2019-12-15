@@ -1,5 +1,5 @@
 use permutohedron::LexicalPermutation;
-use computer::Computer;
+use computer::{Computer, StandardComputerIoSystem};
 
 fn get_phase_setting_permutations() -> Vec<Vec<i32>> {
     let mut phase_settings = vec![0, 1, 2, 3, 4];
@@ -25,9 +25,9 @@ fn get_puzzle_input() -> Vec<i32> {
     get_input(data)
 }
 
-fn make_amplifier() -> Computer {
+fn make_amplifier() -> Computer<StandardComputerIoSystem> {
     let program = get_puzzle_input();
-    Computer::load_program(program)
+    Computer::load_program(program, StandardComputerIoSystem::new())
 }
 
 fn main() {
