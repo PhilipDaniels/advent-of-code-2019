@@ -283,6 +283,7 @@ pub struct Computer<I> {
     instruction_pointer: usize,
     program: Vec<i32>,
     pub io_system: I,
+    pub halted: bool,
 }
 
 impl<I> Computer<I>
@@ -292,7 +293,8 @@ impl<I> Computer<I>
         Computer {
             instruction_pointer: 0,
             program: program,
-            io_system: io_system
+            io_system: io_system,
+            halted: false,
         }
     }
 
@@ -358,7 +360,10 @@ impl<I> Computer<I>
                     self.write_operand(ParameterNumber::Three, p3, result);
                 },
 
-                Instruction::Halt => break,
+                Instruction::Halt => {
+                    self.halted = true;
+                    break;
+                },
             }
 
             self.instruction_pointer += inst.instruction_pointer_increment();
