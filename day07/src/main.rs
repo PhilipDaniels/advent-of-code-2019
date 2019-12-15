@@ -13,6 +13,17 @@ fn get_phase_setting_permutations() -> Vec<Vec<i32>> {
     permutations
 }
 
+fn get_input(raw_input: &str) -> Vec<i32> {
+    raw_input.split(',')
+        .map(|s| i32::parse(s).expect("Input should be an integer"))
+        .collect()
+}
+
+fn get_puzzle_input() -> Vec<i32> {
+    let data = include_str!("input.txt");
+    get_input(data)
+}
+
 fn main() {
     let permutations = get_phase_setting_permutations();
     println!("There are {} permutations.", permutations.len());
