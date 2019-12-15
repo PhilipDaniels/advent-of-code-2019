@@ -1,5 +1,5 @@
 use permutohedron::LexicalPermutation;
-use computer::{Computer, StandardComputerIoSystem};
+use computer::{Computer, StandardComputerIoSystem, ComputerIo};
 
 fn get_phase_setting_permutations() -> Vec<Vec<i32>> {
     let mut phase_settings = vec![0, 1, 2, 3, 4];
@@ -23,11 +23,6 @@ fn get_input(raw_input: &str) -> Vec<i32> {
 fn get_puzzle_input() -> Vec<i32> {
     let data = include_str!("input.txt");
     get_input(data)
-}
-
-fn make_amplifier() -> Computer<StandardComputerIoSystem> {
-    let program = get_puzzle_input();
-    Computer::load_program(program, StandardComputerIoSystem::new())
 }
 
 fn main() {
@@ -55,13 +50,48 @@ fn main() {
 }
 
 fn calculate_output_signal(permutation: &[i32]) -> i32 {
-    let mut amp_a = make_amplifier();
+    let mut amp_a = make_amplifier(permutation[0]);
 
     // The computer currently returns 'output' that is simply
     // the value left at address 0. This is UTTERLY IRRELEVANT
     // for this problem, where the output we want is the value
     // that is written to stdout.
-    let ignored_output = amp_a.run().expect("Program should produce a valid output");
+    amp_a.run().expect("Program should produce a valid output");
 
     0
+}
+
+fn make_amplifier(phase_setting: i32) -> Computer<AutoComputerIoSystem> {
+    let program = get_puzzle_input();
+
+    let io = AutoComputerIoSystem::new(phase_setting);
+    Computer::load_program(program, io)
+}
+
+pub struct AutoComputerIoSystem {
+    phase_setting: i32,
+    input: Option<i32>,
+    output: Option<i32>,
+}
+
+impl ComputerIo for AutoComputerIoSystem {
+    fn read(&self, message: &str) -> i32 {
+        0
+    }
+
+    fn write(&self, message: &str) {
+        self.output = Some(
+            message.parse::<i32>().expect("Program should write a valid integer")
+        );
+    }
+}
+
+impl AutoComputerIoSystem {
+    fn new(phase_setting: i32) -> Self {
+        Self {
+            phase_setting,
+            input: None,
+            output: None,
+        }
+    }
 }
