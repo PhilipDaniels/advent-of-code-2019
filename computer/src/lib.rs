@@ -237,17 +237,61 @@ fn decode_parameter_mode(inst: i32, prm_num: ParameterNumber, allowed: AllowedPa
     }
 }
 
-/// Represents the virtual machine we are executing the program on.
-pub struct Computer {
-    instruction_pointer: usize,
-    program: Vec<i32>,
+/// Represents the IO that the computer is capable of.
+pub trait ComputerIo {
+    fn read(&self, message: &str) -> i32;
+    fn write(&self, message: &str);
 }
 
-impl Computer {
-    pub fn load_program(program: Vec<i32>) -> Self {
+/// The default implementation of `ComputerIo` reads from stdin and
+/// writes to stdout.
+pub struct StandardComputerIoSystem { }
+
+impl StandardComputerIoSystem {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+impl ComputerIo for StandardComputerIoSystem {
+    fn read(&self, message: &str) -> i32 {
+        use std::io::Write;
+        use std::io::{stdout, stdin};
+
+        loop {
+            print!("Enter number: ");
+            stdout().flush().unwrap();
+            let mut ret = String::new();
+            stdin().read_line(&mut ret).expect("Failed to read from stdin");
+
+            match ret.trim().parse::<i32>() {
+                Ok(value) => return value,
+                Err(_) => {
+                    println!("\nNOT A VALID INTEGER. Try again.");
+                }
+            }
+        }
+    }
+
+    fn write(&self, message: &str) {
+        println!("{}", message);
+    }
+}
+
+/// Represents the virtual machine we are executing the program on.
+pub struct Computer<I> {
+    instruction_pointer: usize,
+    program: Vec<i32>,
+    io_system: I,
+}
+
+impl<I> Computer<I>
+    where I: ComputerIo
+{
+    pub fn load_program(program: Vec<i32>, io_system: I) -> Self {
         Computer {
             instruction_pointer: 0,
-            program: program
+            program: program,
+            io_system: io_system
         }
     }
 

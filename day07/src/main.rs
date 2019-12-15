@@ -57,10 +57,10 @@ fn main() {
 fn calculate_output_signal(permutation: &[i32]) -> i32 {
     let mut amp_a = make_amplifier();
 
-    /// The computer currently returns 'output' that is simply
-    /// the value left at address 0. This is UTTERLY IRRELEVANT
-    /// for this problem, where the output we want is the value
-    /// that is written to stdout.
+    // The computer currently returns 'output' that is simply
+    // the value left at address 0. This is UTTERLY IRRELEVANT
+    // for this problem, where the output we want is the value
+    // that is written to stdout.
     let ignored_output = amp_a.run().expect("Program should produce a valid output");
 
     0

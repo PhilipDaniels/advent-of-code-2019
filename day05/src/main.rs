@@ -1,4 +1,4 @@
-use computer::{Computer};
+use computer::{Computer, StandardComputerIoSystem};
 
 fn day2_program() -> Vec<i32> {
     let mut input = vec![
@@ -19,7 +19,7 @@ fn day2_program() -> Vec<i32> {
 fn validate_day2_using_library_interpreter() {
     // This is the run for part 1. Should print 2692315.
     let program = day2_program();
-    let mut computer = Computer::load_program(program);
+    let mut computer = Computer::load_program(program, StandardComputerIoSystem::new());
     computer.run_and_print_result();
 
     // Now iterate for part 2. Should print noun = 95, verb = 7, 100 * noun + verb = 9507.
@@ -29,7 +29,7 @@ fn validate_day2_using_library_interpreter() {
             program[1] = noun;
             program[2] = verb;
 
-            let mut computer = Computer::load_program(program);
+            let mut computer = Computer::load_program(program, StandardComputerIoSystem::new());
             let result = computer.run().unwrap();
 
             if result == 19690720 {
@@ -101,6 +101,6 @@ fn main() {
 
     */
     let program = day5_program();
-    let mut computer = Computer::load_program(program);
+    let mut computer = Computer::load_program(program, StandardComputerIoSystem::new());
     computer.run().unwrap();
 }
