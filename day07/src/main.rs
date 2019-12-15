@@ -48,27 +48,17 @@ fn calculate_output_signal(permutation: &[i32]) -> i32 {
     // the value left at address 0. This is UTTERLY IRRELEVANT
     // for this problem, where the output we want is the value
     // that is written to stdout.
-    let mut amp_a = make_amplifier(permutation[0], 0);
-    amp_a.run().expect("Program should produce a valid output");
-    let stage_output = amp_a.io_system.value;
 
-    let mut amp_b = make_amplifier(permutation[1], stage_output);
-    amp_b.run().expect("Program should produce a valid output");
-    let stage_output = amp_b.io_system.value;
+    // 0 is the input to the first amp, the second amp takes the
+    // output of the first as its input, etc.
+    let mut input_output_value = 0;
+    for permutation in permutation {
+        let mut amp = make_amplifier(*permutation, input_output_value);
+        amp.run().expect("Program should produce a valid output");
+        input_output_value = amp.io_system.value;
+    }
 
-    let mut amp_c = make_amplifier(permutation[2], stage_output);
-    amp_c.run().expect("Program should produce a valid output");
-    let stage_output = amp_c.io_system.value;
-
-    let mut amp_d = make_amplifier(permutation[3], stage_output);
-    amp_d.run().expect("Program should produce a valid output");
-    let stage_output = amp_d.io_system.value;
-
-    let mut amp_e = make_amplifier(permutation[4], stage_output);
-    amp_e.run().expect("Program should produce a valid output");
-    let stage_output = amp_e.io_system.value;
-
-    stage_output
+    input_output_value
 }
 
 fn make_amplifier(phase_setting: i32, value: i32) -> Computer<AutoComputerIoSystem> {
