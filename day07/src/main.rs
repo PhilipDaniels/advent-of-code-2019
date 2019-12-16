@@ -68,9 +68,10 @@ fn calculate_output_signal_with_feedback(program: Vec<i32>, permutation: &[i32])
 
     let mut n = 1;
     loop {
-        println!("n = {}", n);
+        //println!("n = {}", n);
         n += 1;
         amp_a.run().unwrap();
+        //println!("amp_a.execution_state = {:?}", amp_a.execution_state);
 
         amp_b.io_system.value = amp_a.io_system.value.take();
         amp_b.run().unwrap();
@@ -85,7 +86,7 @@ fn calculate_output_signal_with_feedback(program: Vec<i32>, permutation: &[i32])
         amp_e.run().unwrap();
 
         if amp_e.execution_state == ExecutionState::Halted {
-            println!("e is halted");
+            //println!("e is halted");
             return amp_e.io_system.value.unwrap();
         } else {
             //println!("amp_e.io_system.value = {:?}", amp_e.io_system.value);
@@ -143,9 +144,11 @@ impl ComputerIo for AutoComputerIoSystem {
     fn try_read(&mut self, _message: &str) -> Option<i32> {
         if self.num_reads == 0 {
             self.num_reads += 1;
+            //println!("READ1: {}", self.phase_setting);
             Some(self.phase_setting)
         } else {
             self.num_reads += 1;
+            //println!("READ2: {:?}", self.value);
             self.value.take()
         }
     }

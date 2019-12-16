@@ -319,6 +319,7 @@ impl<I> Computer<I>
                     let p2_value = self.fetch_operand(ParameterNumber::Two, p2);
                     let result = p1_value + p2_value;
                     self.write_operand(ParameterNumber::Three, p3, result);
+                    self.instruction_pointer += inst.instruction_pointer_increment();
                 },
 
                 Instruction::Multiply(p1, p2, p3) => {
@@ -326,13 +327,18 @@ impl<I> Computer<I>
                     let p2_value = self.fetch_operand(ParameterNumber::Two, p2);
                     let result = p1_value * p2_value;
                     self.write_operand(ParameterNumber::Three, p3, result);
+                    self.instruction_pointer += inst.instruction_pointer_increment();
                 },
 
                 Instruction::Read(p1) => {
                     match self.io_system.try_read("Enter number: ") {
-                        Some(input) => self.write_operand(ParameterNumber::One, p1, input),
+                        Some(input) => {
+                            self.write_operand(ParameterNumber::One, p1, input);
+                            self.instruction_pointer += inst.instruction_pointer_increment();
+                        },
                         None => {
                             self.execution_state = ExecutionState::WaitingOnInput;
+                            self.instruction_pointer += inst.instruction_pointer_increment();
                             println!("Setting ExecutionState::WaitingOnInput");
                             break;
                         }
@@ -341,6 +347,7 @@ impl<I> Computer<I>
                 Instruction::Write(p1) => {
                     let value = self.fetch_operand(ParameterNumber::One, p1);
                     self.io_system.write(value);
+                    self.instruction_pointer += inst.instruction_pointer_increment();
                     break;
                 },
 
@@ -351,6 +358,7 @@ impl<I> Computer<I>
                         self.instruction_pointer = new_ip;
                         continue;
                     }
+                    self.instruction_pointer += inst.instruction_pointer_increment();
                 },
 
                 Instruction::JumpIfFalse(p1, p2) => {
@@ -360,6 +368,7 @@ impl<I> Computer<I>
                         self.instruction_pointer = new_ip;
                         continue;
                     }
+                    self.instruction_pointer += inst.instruction_pointer_increment();
                 },
 
                 Instruction::LessThan(p1, p2, p3) => {
@@ -367,6 +376,7 @@ impl<I> Computer<I>
                     let p2_value = self.fetch_operand(ParameterNumber::Two, p2);
                     let result = if p1_value < p2_value { 1 } else { 0 };
                     self.write_operand(ParameterNumber::Three, p3, result);
+                    self.instruction_pointer += inst.instruction_pointer_increment();
                 },
 
                 Instruction::Equals(p1, p2, p3) => {
@@ -374,6 +384,7 @@ impl<I> Computer<I>
                     let p2_value = self.fetch_operand(ParameterNumber::Two, p2);
                     let result = if p1_value == p2_value { 1 } else { 0 };
                     self.write_operand(ParameterNumber::Three, p3, result);
+                    self.instruction_pointer += inst.instruction_pointer_increment();
                 },
 
                 Instruction::Halt => {
@@ -382,7 +393,7 @@ impl<I> Computer<I>
                 },
             }
 
-            self.instruction_pointer += inst.instruction_pointer_increment();
+
         }
 
         Ok(self.program[0])
