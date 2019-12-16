@@ -64,7 +64,7 @@ fn main() {
     println!();
     let mut n = 0;
     for pixel in final_image {
-        print!("{}", if pixel == 0 { '.' } else { '#'});
+        print!("{}", if pixel == 0 { ' ' } else { '#'});
         if n == IMAGE_WIDTH - 1{
             println!();
             n = 0;
