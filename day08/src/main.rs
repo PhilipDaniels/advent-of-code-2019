@@ -40,8 +40,36 @@ fn main() {
         .min_by_key(|(_, counts)| counts.zero)
         .unwrap();
 
-    println!("L = {:?}", layer_with_fewest_zeros);
     let answer = layer_with_fewest_zeros.1.one * layer_with_fewest_zeros.1.two;
     assert_eq!(answer, 1548);
-    println!("Answer = {}", answer);
+    println!("Answer for part 1 = {}", answer);
+
+
+    // Part 2.
+    let layers = input.chunks(IMAGE_WIDTH * IMAGE_HEIGHT).collect::<Vec<_>>();
+    println!("There are {} layers", layers.len());  // 100 layers.
+
+    let mut final_image = Vec::<u32>::new();
+
+    for pixel_index in 0..IMAGE_WIDTH * IMAGE_HEIGHT {
+        for layer_index in 0..layers.len() {
+            if layers[layer_index][pixel_index] != 2 {
+                final_image.push(layers[layer_index][pixel_index]);
+                break;
+            }
+        }
+    }
+
+    // Print the final image (prints "CEKUA").
+    println!();
+    let mut n = 0;
+    for pixel in final_image {
+        print!("{}", if pixel == 0 { '.' } else { '#'});
+        if n == IMAGE_WIDTH - 1{
+            println!();
+            n = 0;
+        } else {
+            n += 1;
+        }
+    }
 }
