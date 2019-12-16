@@ -41,6 +41,7 @@ fn main() {
         }
     }
 
+    assert_eq!(max_output_signal, 21760);
     println!("The answer for part 1 is {}", max_output_signal);
 
     // Part 2.
@@ -55,6 +56,7 @@ fn main() {
         }
     }
 
+    assert_eq!(max_output_signal, 69816958);
     println!("The answer for part 2 is {}", max_output_signal);
 }
 
@@ -66,58 +68,48 @@ fn calculate_output_signal_with_feedback(program: Vec<i32>, permutation: &[i32])
     let mut amp_d = make_amplifier(program.clone(), permutation[3], 0);
     let mut amp_e = make_amplifier(program.clone(), permutation[4], 0);
 
-    let mut n = 1;
     loop {
-        //println!("n = {}", n);
-        n += 1;
-        amp_a.run().unwrap();
-        //println!("amp_a.execution_state = {:?}", amp_a.execution_state);
+        amp_a.run();
 
         amp_b.io_system.value = amp_a.io_system.value.take();
-        amp_b.run().unwrap();
+        amp_b.run();
 
         amp_c.io_system.value = amp_b.io_system.value.take();
-        amp_c.run().unwrap();
+        amp_c.run();
 
         amp_d.io_system.value = amp_c.io_system.value.take();
-        amp_d.run().unwrap();
+        amp_d.run();
 
         amp_e.io_system.value = amp_d.io_system.value.take();
-        amp_e.run().unwrap();
+        amp_e.run();
 
-        if amp_e.execution_state == ExecutionState::Halted {
-            //println!("e is halted");
+        if let ExecutionState::Halted(_) = amp_e.execution_state {
             return amp_e.io_system.value.unwrap();
         } else {
-            //println!("amp_e.io_system.value = {:?}", amp_e.io_system.value);
-            amp_a.io_system.value = amp_e.io_system.value.take();;
+            amp_a.io_system.value = amp_e.io_system.value.take();
         }
     }
 }
 
 fn calculate_output_signal(program: Vec<i32>, permutation: &[i32]) -> i32 {
-    // The computer currently returns 'output' that is simply
-    // the value left at address 0. This is UTTERLY IRRELEVANT
-    // for this problem, where the output we want is the value
-    // that is written to stdout.
     let mut amp_a = make_amplifier(program.clone(), permutation[0], 0);
-    amp_a.run().expect("Program should produce a valid output");
+    amp_a.run();
     let stage_output = amp_a.io_system.value.unwrap();
 
     let mut amp_b = make_amplifier(program.clone(), permutation[1], stage_output);
-    amp_b.run().expect("Program should produce a valid output");
+    amp_b.run();
     let stage_output = amp_b.io_system.value.unwrap();
 
     let mut amp_c = make_amplifier(program.clone(), permutation[2], stage_output);
-    amp_c.run().expect("Program should produce a valid output");
+    amp_c.run();
     let stage_output = amp_c.io_system.value.unwrap();
 
     let mut amp_d = make_amplifier(program.clone(), permutation[3], stage_output);
-    amp_d.run().expect("Program should produce a valid output");
+    amp_d.run();
     let stage_output = amp_d.io_system.value.unwrap();
 
     let mut amp_e = make_amplifier(program.clone(), permutation[4], stage_output);
-    amp_e.run().expect("Program should produce a valid output");
+    amp_e.run();
     let stage_output = amp_e.io_system.value.unwrap();
 
     stage_output
@@ -144,11 +136,9 @@ impl ComputerIo for AutoComputerIoSystem {
     fn try_read(&mut self, _message: &str) -> Option<i32> {
         if self.num_reads == 0 {
             self.num_reads += 1;
-            //println!("READ1: {}", self.phase_setting);
             Some(self.phase_setting)
         } else {
             self.num_reads += 1;
-            //println!("READ2: {:?}", self.value);
             self.value.take()
         }
     }

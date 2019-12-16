@@ -281,7 +281,7 @@ impl ComputerIo for StandardComputerIoSystem {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ExecutionState {
     Running,
-    Halted,
+    Halted(i32),
     WaitingOnInput,
 }
 
@@ -305,13 +305,18 @@ impl<I> Computer<I>
         }
     }
 
-    /// Executes the given program and returns the value left at
-    /// position 0 when execution is complete.
-    pub fn run(&mut self) -> Result<i32, String> {
+    /// Executes the given program until the computer halts or has to suspend.
+    /// Returns the execution state that it reaches. If the computer halts, the
+    /// value stored in address 0 is returned, as several problems require this
+    /// as the answer.
+    ///
+    /// If there are any problems, such as with decoding rogue instructions,
+    /// the computer panics.
+    pub fn run(&mut self) -> ExecutionState {
         loop {
             self.execution_state = ExecutionState::Running;
 
-            let inst = self.next_instruction()?;
+            let inst = self.next_instruction().expect("Cannot decode instruction");
 
             match inst {
                 Instruction::Add(p1, p2, p3) => {
@@ -339,7 +344,6 @@ impl<I> Computer<I>
                         None => {
                             self.execution_state = ExecutionState::WaitingOnInput;
                             self.instruction_pointer += inst.instruction_pointer_increment();
-                            println!("Setting ExecutionState::WaitingOnInput");
                             break;
                         }
                     }
@@ -388,22 +392,13 @@ impl<I> Computer<I>
                 },
 
                 Instruction::Halt => {
-                    self.execution_state = ExecutionState::Halted;
+                    self.execution_state = ExecutionState::Halted(self.program[0]);
                     break;
                 },
             }
-
-
         }
 
-        Ok(self.program[0])
-    }
-
-    pub fn run_and_print_result(&mut self) {
-        match self.run() {
-            Ok(result) => println!("SUCCESS: Result = {}", result),
-            Err(e) => println!("FAILURE: {}", e),
-        }
+        self.execution_state
     }
 
     fn next_instruction(&self) -> Result<Instruction, String> {
