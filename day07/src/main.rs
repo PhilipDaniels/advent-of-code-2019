@@ -88,7 +88,7 @@ fn calculate_output_signal_with_feedback(program: Vec<i32>, permutation: &[i32])
             println!("e is halted");
             return amp_e.io_system.value.unwrap();
         } else {
-            println!("amp_e.io_system.value = {:?}", amp_e.io_system.value);
+            //println!("amp_e.io_system.value = {:?}", amp_e.io_system.value);
             amp_a.io_system.value = amp_e.io_system.value.take();;
         }
     }

@@ -341,6 +341,7 @@ impl<I> Computer<I>
                 Instruction::Write(p1) => {
                     let value = self.fetch_operand(ParameterNumber::One, p1);
                     self.io_system.write(value);
+                    break;
                 },
 
                 Instruction::JumpIfTrue(p1, p2) => {
