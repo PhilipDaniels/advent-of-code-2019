@@ -239,8 +239,8 @@ fn decode_parameter_mode(inst: i32, prm_num: ParameterNumber, allowed: AllowedPa
 
 /// Represents the IO that the computer is capable of.
 pub trait ComputerIo {
-    fn read(&mut self, message: &str) -> i32;
-    fn write(&mut self, message: &str);
+    fn try_read(&mut self, message: &str) -> Option<i32>;
+    fn write(&mut self, value: i32);
 }
 
 /// The default implementation of `ComputerIo` reads from stdin and
@@ -254,7 +254,7 @@ impl StandardComputerIoSystem {
 }
 
 impl ComputerIo for StandardComputerIoSystem {
-    fn read(&mut self, message: &str) -> i32 {
+    fn try_read(&mut self, message: &str) -> Option<i32> {
         use std::io::Write;
         use std::io::{stdout, stdin};
 
@@ -265,7 +265,7 @@ impl ComputerIo for StandardComputerIoSystem {
             stdin().read_line(&mut ret).expect("Failed to read from stdin");
 
             match ret.trim().parse::<i32>() {
-                Ok(value) => return value,
+                Ok(value) => return Some(value),
                 Err(_) => {
                     println!("\nNOT A VALID INTEGER. Try again.");
                 }
@@ -273,9 +273,16 @@ impl ComputerIo for StandardComputerIoSystem {
         }
     }
 
-    fn write(&mut self, message: &str) {
-        println!("{}", message);
+    fn write(&mut self, value: i32) {
+        println!("{}", value);
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ExecutionState {
+    Running,
+    Halted,
+    WaitingOnInput,
 }
 
 /// Represents the virtual machine we are executing the program on.
@@ -283,7 +290,7 @@ pub struct Computer<I> {
     instruction_pointer: usize,
     program: Vec<i32>,
     pub io_system: I,
-    pub halted: bool,
+    pub execution_state: ExecutionState,
 }
 
 impl<I> Computer<I>
@@ -294,7 +301,7 @@ impl<I> Computer<I>
             instruction_pointer: 0,
             program: program,
             io_system: io_system,
-            halted: false,
+            execution_state: ExecutionState::Running,
         }
     }
 
@@ -302,6 +309,8 @@ impl<I> Computer<I>
     /// position 0 when execution is complete.
     pub fn run(&mut self) -> Result<i32, String> {
         loop {
+            self.execution_state = ExecutionState::Running;
+
             let inst = self.next_instruction()?;
 
             match inst {
@@ -320,12 +329,18 @@ impl<I> Computer<I>
                 },
 
                 Instruction::Read(p1) => {
-                    let input = self.io_system.read("Enter number: ");
-                    self.write_operand(ParameterNumber::One, p1, input);
+                    match self.io_system.try_read("Enter number: ") {
+                        Some(input) => self.write_operand(ParameterNumber::One, p1, input),
+                        None => {
+                            self.execution_state = ExecutionState::WaitingOnInput;
+                            println!("Setting ExecutionState::WaitingOnInput");
+                            break;
+                        }
+                    }
                 },
                 Instruction::Write(p1) => {
                     let value = self.fetch_operand(ParameterNumber::One, p1);
-                    self.io_system.write(&value.to_string());
+                    self.io_system.write(value);
                 },
 
                 Instruction::JumpIfTrue(p1, p2) => {
@@ -361,7 +376,7 @@ impl<I> Computer<I>
                 },
 
                 Instruction::Halt => {
-                    self.halted = true;
+                    self.execution_state = ExecutionState::Halted;
                     break;
                 },
             }
