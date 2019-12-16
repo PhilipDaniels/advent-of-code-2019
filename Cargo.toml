@@ -8,4 +8,5 @@ members = [
     "computer",
     "day06",
     "day07",
+    "day08",
 ]
