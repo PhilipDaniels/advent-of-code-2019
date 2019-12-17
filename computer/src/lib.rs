@@ -289,6 +289,7 @@ pub enum ExecutionState {
 pub struct Computer<I> {
     instruction_pointer: usize,
     program: Vec<i64>,
+    relative_base: i64,
     pub io_system: I,
     pub execution_state: ExecutionState,
 }
@@ -300,6 +301,7 @@ impl<I> Computer<I>
         Computer {
             instruction_pointer: 0,
             program: program,
+            relative_base: 0,
             io_system: io_system,
             execution_state: ExecutionState::Running,
         }
