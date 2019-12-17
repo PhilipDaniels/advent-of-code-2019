@@ -63,7 +63,7 @@ impl Instruction {
     }
 
     /// Decodes an instruction from a raw integer.
-    pub fn decode(inst: i32) -> Result<Instruction, String> {
+    pub fn decode(inst: i64) -> Result<Instruction, String> {
         use Instruction::*;
 
         // Include this as a sanity check so we don't start allowing
@@ -201,7 +201,7 @@ impl ParameterNumber {
 }
 
 /// Helper function to pull out a single parameter mode.
-fn decode_parameter_mode(inst: i32, prm_num: ParameterNumber, allowed: AllowedParameterMode) -> Result<ParameterMode, String> {
+fn decode_parameter_mode(inst: i64, prm_num: ParameterNumber, allowed: AllowedParameterMode) -> Result<ParameterMode, String> {
     use self::ParameterMode::*;
 
     let i = inst / match prm_num {
@@ -239,8 +239,8 @@ fn decode_parameter_mode(inst: i32, prm_num: ParameterNumber, allowed: AllowedPa
 
 /// Represents the IO that the computer is capable of.
 pub trait ComputerIo {
-    fn try_read(&mut self, message: &str) -> Option<i32>;
-    fn write(&mut self, value: i32);
+    fn try_read(&mut self, message: &str) -> Option<i64>;
+    fn write(&mut self, value: i64);
 }
 
 /// The default implementation of `ComputerIo` reads from stdin and
@@ -254,7 +254,7 @@ impl StandardComputerIoSystem {
 }
 
 impl ComputerIo for StandardComputerIoSystem {
-    fn try_read(&mut self, message: &str) -> Option<i32> {
+    fn try_read(&mut self, message: &str) -> Option<i64> {
         use std::io::Write;
         use std::io::{stdout, stdin};
 
@@ -264,7 +264,7 @@ impl ComputerIo for StandardComputerIoSystem {
             let mut ret = String::new();
             stdin().read_line(&mut ret).expect("Failed to read from stdin");
 
-            match ret.trim().parse::<i32>() {
+            match ret.trim().parse::<i64>() {
                 Ok(value) => return Some(value),
                 Err(_) => {
                     println!("\nNOT A VALID INTEGER. Try again.");
@@ -273,7 +273,7 @@ impl ComputerIo for StandardComputerIoSystem {
         }
     }
 
-    fn write(&mut self, value: i32) {
+    fn write(&mut self, value: i64) {
         println!("{}", value);
     }
 }
@@ -281,14 +281,14 @@ impl ComputerIo for StandardComputerIoSystem {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ExecutionState {
     Running,
-    Halted(i32),
+    Halted(i64),
     WaitingOnInput,
 }
 
 /// Represents the virtual machine we are executing the program on.
 pub struct Computer<I> {
     instruction_pointer: usize,
-    program: Vec<i32>,
+    program: Vec<i64>,
     pub io_system: I,
     pub execution_state: ExecutionState,
 }
@@ -296,7 +296,7 @@ pub struct Computer<I> {
 impl<I> Computer<I>
     where I: ComputerIo
 {
-    pub fn load_program(program: Vec<i32>, io_system: I) -> Self {
+    pub fn load_program(program: Vec<i64>, io_system: I) -> Self {
         Computer {
             instruction_pointer: 0,
             program: program,
@@ -405,7 +405,7 @@ impl<I> Computer<I>
         Instruction::decode(self.program[self.instruction_pointer])
     }
 
-    fn fetch_operand(&self, operand_number: ParameterNumber, mode: ParameterMode) -> i32 {
+    fn fetch_operand(&self, operand_number: ParameterNumber, mode: ParameterMode) -> i64 {
         let offset = operand_number.offset();
         let operand_index = self.instruction_pointer + offset;
 
@@ -421,7 +421,7 @@ impl<I> Computer<I>
         }
     }
 
-    fn write_operand(&mut self, operand_number: ParameterNumber, mode: ParameterMode, value: i32) {
+    fn write_operand(&mut self, operand_number: ParameterNumber, mode: ParameterMode, value: i64) {
         let offset = operand_number.offset();
         let operand_index = self.instruction_pointer + offset;
 

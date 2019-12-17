@@ -1,7 +1,7 @@
 use permutohedron::LexicalPermutation;
 use computer::{Computer, ComputerIo, ExecutionState};
 
-fn get_phase_setting_permutations(mut phase_settings: Vec<i32>) -> Vec<Vec<i32>> {
+fn get_phase_setting_permutations(mut phase_settings: Vec<i64>) -> Vec<Vec<i64>> {
     let mut permutations = Vec::new();
     loop {
         permutations.push(phase_settings.clone());
@@ -13,13 +13,13 @@ fn get_phase_setting_permutations(mut phase_settings: Vec<i32>) -> Vec<Vec<i32>>
     permutations
 }
 
-fn get_input(raw_input: &str) -> Vec<i32> {
+fn get_input(raw_input: &str) -> Vec<i64> {
     raw_input.split(',')
-        .map(|s| s.parse::<i32>().expect("Input should be an integer"))
+        .map(|s| s.parse::<i64>().expect("Input should be an integer"))
         .collect()
 }
 
-fn get_puzzle_input() -> Vec<i32> {
+fn get_puzzle_input() -> Vec<i64> {
     let data = include_str!("input.txt");
     get_input(data)
 }
@@ -61,7 +61,7 @@ fn main() {
 }
 
 
-fn calculate_output_signal_with_feedback(program: Vec<i32>, permutation: &[i32]) -> i32 {
+fn calculate_output_signal_with_feedback(program: Vec<i64>, permutation: &[i64]) -> i64 {
     let mut amp_a = make_amplifier(program.clone(), permutation[0], 0);
     let mut amp_b = make_amplifier(program.clone(), permutation[1], 0);
     let mut amp_c = make_amplifier(program.clone(), permutation[2], 0);
@@ -91,7 +91,7 @@ fn calculate_output_signal_with_feedback(program: Vec<i32>, permutation: &[i32])
     }
 }
 
-fn calculate_output_signal(program: Vec<i32>, permutation: &[i32]) -> i32 {
+fn calculate_output_signal(program: Vec<i64>, permutation: &[i64]) -> i64 {
     let mut amp_a = make_amplifier(program.clone(), permutation[0], 0);
     amp_a.run();
     let stage_output = amp_a.io_system.value.unwrap();
@@ -116,9 +116,9 @@ fn calculate_output_signal(program: Vec<i32>, permutation: &[i32]) -> i32 {
 }
 
 fn make_amplifier(
-    program: Vec<i32>,
-    phase_setting: i32,
-    value: i32) -> Computer<AutoComputerIoSystem>
+    program: Vec<i64>,
+    phase_setting: i64,
+    value: i64) -> Computer<AutoComputerIoSystem>
 {
     let io  = AutoComputerIoSystem::new(phase_setting, value);
     Computer::load_program(program, io)
@@ -126,14 +126,14 @@ fn make_amplifier(
 
 pub struct AutoComputerIoSystem {
     num_reads: i32,
-    phase_setting: i32,
+    phase_setting: i64,
     // This is both the input and the output value.
     // A bit nasty, but works for this problem.
-    value: Option<i32>,
+    value: Option<i64>,
 }
 
 impl ComputerIo for AutoComputerIoSystem {
-    fn try_read(&mut self, _message: &str) -> Option<i32> {
+    fn try_read(&mut self, _message: &str) -> Option<i64> {
         if self.num_reads == 0 {
             self.num_reads += 1;
             Some(self.phase_setting)
@@ -143,13 +143,13 @@ impl ComputerIo for AutoComputerIoSystem {
         }
     }
 
-    fn write(&mut self, value: i32) {
+    fn write(&mut self, value: i64) {
         self.value = Some(value);
     }
 }
 
 impl AutoComputerIoSystem {
-    fn new(phase_setting: i32, value: i32) -> Self {
+    fn new(phase_setting: i64, value: i64) -> Self {
         Self {
             num_reads: 0,
             phase_setting,

@@ -1,6 +1,6 @@
 use computer::{Computer, StandardComputerIoSystem, ExecutionState};
 
-fn day2_program() -> Vec<i32> {
+fn day2_program() -> Vec<i64> {
     let mut input = vec![
         1,0,0,3,1,1,2,3,1,3,4,3,1,5,0,3,2,1,6,19,1,19,5,23,2,13,23,27,1,10,
         27,31,2,6,31,35,1,9,35,39,2,10,39,43,1,43,9,47,1,47,9,51,2,10,51,
@@ -50,7 +50,7 @@ fn validate_day2_using_library_interpreter() {
     }
 }
 
-fn day5_program() -> Vec<i32> {
+fn day5_program() -> Vec<i64> {
     vec![
         3,225,1,225,6,6,1100,1,238,225,104,0,1101,90,64,225,1101,15,56,225,1,14,153,
         224,101,-147,224,224,4,224,1002,223,8,223,1001,224,3,224,1,224,223,223,2,162,
