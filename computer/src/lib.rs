@@ -96,9 +96,9 @@ impl Instruction {
         // write junk into the wrong addresses.
         let instruction = match opcode {
             1 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
-                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, APM::Either)?;
-                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, APM::Position)?;
+                let p1 = decode_parameter_mode2(inst, ParameterNumber::One, ModeFlags::ANY)?;
+                let p2 = decode_parameter_mode2(inst, ParameterNumber::Two, ModeFlags::ANY)?;
+                let p3 = decode_parameter_mode2(inst, ParameterNumber::Three, ModeFlags::POS_OR_REL)?;
                 if inst / 10000 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -106,9 +106,9 @@ impl Instruction {
             },
 
             2 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
-                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, APM::Either)?;
-                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, APM::Position)?;
+                let p1 = decode_parameter_mode2(inst, ParameterNumber::One, ModeFlags::ANY)?;
+                let p2 = decode_parameter_mode2(inst, ParameterNumber::Two, ModeFlags::ANY)?;
+                let p3 = decode_parameter_mode2(inst, ParameterNumber::Three, ModeFlags::POS_OR_REL)?;
                 if inst / 10000 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -116,7 +116,7 @@ impl Instruction {
             },
 
             3 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Position)?;
+                let p1 = decode_parameter_mode2(inst, ParameterNumber::One, ModeFlags::POS_OR_REL)?;
                 if inst / 100 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -124,16 +124,16 @@ impl Instruction {
             },
 
             4 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
-                if inst / 100 > 1 {
+                let p1 = decode_parameter_mode2(inst, ParameterNumber::One, ModeFlags::ANY)?;
+                if inst / 100 > 2 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
                 Write(p1)
             },
 
             5 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
-                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, APM::Either)?;
+                let p1 = decode_parameter_mode2(inst, ParameterNumber::One, ModeFlags::ANY)?;
+                let p2 = decode_parameter_mode2(inst, ParameterNumber::Two, ModeFlags::ANY)?;
                 if inst / 10000 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -141,8 +141,8 @@ impl Instruction {
             },
 
             6 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
-                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, APM::Either)?;
+                let p1 = decode_parameter_mode2(inst, ParameterNumber::One, ModeFlags::ANY)?;
+                let p2 = decode_parameter_mode2(inst, ParameterNumber::Two, ModeFlags::ANY)?;
                 if inst / 10000 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -150,9 +150,9 @@ impl Instruction {
             },
 
             7 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
-                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, APM::Either)?;
-                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, APM::Position)?;
+                let p1 = decode_parameter_mode2(inst, ParameterNumber::One, ModeFlags::ANY)?;
+                let p2 = decode_parameter_mode2(inst, ParameterNumber::Two, ModeFlags::ANY)?;
+                let p3 = decode_parameter_mode2(inst, ParameterNumber::Three, ModeFlags::POS_OR_REL)?;
                 if inst / 10000 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -160,9 +160,9 @@ impl Instruction {
             },
 
             8 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
-                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, APM::Either)?;
-                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, APM::Position)?;
+                let p1 = decode_parameter_mode2(inst, ParameterNumber::One, ModeFlags::ANY)?;
+                let p2 = decode_parameter_mode2(inst, ParameterNumber::Two, ModeFlags::ANY)?;
+                let p3 = decode_parameter_mode2(inst, ParameterNumber::Three, ModeFlags::POS_OR_REL)?;
                 if inst / 10000 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -170,8 +170,8 @@ impl Instruction {
             },
 
             9 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
-                if inst / 100 > 1 {
+                let p1 = decode_parameter_mode2(inst, ParameterNumber::One, ModeFlags::ANY)?;
+                if inst / 100 > 2 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
                 RelativeBaseOffset(p1)
@@ -191,16 +191,6 @@ impl Instruction {
 
 }
 
-/// Helper type used when determining the parameter modes for an
-/// instruction. If a non-allowed parameter mode is detected, an
-/// error is returned.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum APM {
-    Position,
-    Immediate,
-    Either,
-}
-
 bitflags! {
     struct ModeFlags: u32 {
         const POSITION = 0b00000001;
@@ -210,7 +200,6 @@ bitflags! {
         const POS_OR_REL = Self::POSITION.bits | Self::RELATIVE.bits;
     }
 }
-
 
 /// The possible parameters to an instruction. We use an enum to constrain
 /// the range of values that instances of this type can take (as opposed to
@@ -229,8 +218,7 @@ impl ParameterNumber {
     }
 }
 
-/// Helper function to pull out a single parameter mode.
-fn decode_parameter_mode(inst: i64, prm_num: ParameterNumber, allowed: APM) -> Result<ParameterMode, String> {
+fn decode_parameter_mode2(inst: i64, prm_num: ParameterNumber, allowed: ModeFlags) -> Result<ParameterMode, String> {
     use self::ParameterMode::*;
 
     let i = inst / match prm_num {
@@ -245,7 +233,7 @@ fn decode_parameter_mode(inst: i64, prm_num: ParameterNumber, allowed: APM) -> R
 
     match mode {
         0 => {
-            if allowed == APM::Position || allowed == APM::Either {
+            if allowed.contains(ModeFlags::POSITION) {
                 Ok(Position)
             } else {
                 Err(format!(
@@ -254,7 +242,7 @@ fn decode_parameter_mode(inst: i64, prm_num: ParameterNumber, allowed: APM) -> R
             }
         },
         1 => {
-            if allowed == APM::Immediate || allowed == APM::Either {
+            if allowed.contains(ModeFlags::IMMEDIATE) {
                 Ok(Immediate)
             } else {
                 Err(format!(
@@ -263,11 +251,18 @@ fn decode_parameter_mode(inst: i64, prm_num: ParameterNumber, allowed: APM) -> R
             }
         },
         2 => {
-            Ok(Immediate)
+            if allowed.contains(ModeFlags::RELATIVE) {
+                Ok(Relative)
+            } else {
+                Err(format!(
+                    "In instruction {}, found parameter mode {}, which does not comply with the allowed mode {:?}",
+                    inst, mode, allowed))
+            }
         },
         _ => Err(format!("In instruction {}, found invalid parameter mode {}", inst, mode))
     }
 }
+
 
 /// Represents the IO that the computer is capable of.
 pub trait ComputerIo {
