@@ -407,9 +407,10 @@ impl<I> Computer<I>
         Instruction::decode(self.program[self.instruction_pointer])
     }
 
-    fn fetch_operand(&self, operand_number: ParameterNumber, mode: ParameterMode) -> i64 {
+    fn fetch_operand(&mut self, operand_number: ParameterNumber, mode: ParameterMode) -> i64 {
         let offset = operand_number.offset();
         let operand_index = self.instruction_pointer + offset;
+        self.grow_memory_if_needed(operand_index);
 
         match mode {
             ParameterMode::Position => {
@@ -417,6 +418,7 @@ impl<I> Computer<I>
                 if address < 0 {
                     panic!("SIGSEGV: address = {}", address);
                 }
+                self.grow_memory_if_needed(address as usize);
                 self.program[address as usize]
             },
             ParameterMode::Immediate => self.program[operand_index]
@@ -426,6 +428,7 @@ impl<I> Computer<I>
     fn write_operand(&mut self, operand_number: ParameterNumber, mode: ParameterMode, value: i64) {
         let offset = operand_number.offset();
         let operand_index = self.instruction_pointer + offset;
+        self.grow_memory_if_needed(operand_index);
 
         match mode {
             ParameterMode::Position => {
@@ -433,10 +436,17 @@ impl<I> Computer<I>
                 if address < 0 {
                     panic!("SIGSEGV: address = {}", address);
                 }
+                self.grow_memory_if_needed(address as usize);
                 self.program[address as usize] = value;
 
             },
             ParameterMode::Immediate => panic!("FAULT: Cannot write to Immediate mode parameter"),
+        }
+    }
+
+    fn grow_memory_if_needed(&mut self, address: usize) {
+        if address >= self.program.len() {
+            self.program.resize(address + 1, 0);
         }
     }
 }
