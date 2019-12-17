@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 /// The two different modes that an instruction parameter can have.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParameterMode {
@@ -7,6 +9,9 @@ pub enum ParameterMode {
     /// The parameter is to be interpreted as a value - if the parameter is 50,
     /// its value is simply 50.
     Immediate = 1,
+    /// The parameter is to be interpreted as a position relative to the
+    /// current value of the computer's Relative Base Offset register.
+    Relative = 2,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -41,6 +46,10 @@ pub enum Instruction {
     /// If the first parameter is equal to the second parameter, it stores 1
     /// in the position given by the third parameter. Otherwise, it stores 0.
     Equals(ParameterMode, ParameterMode, ParameterMode),
+    /// Relative Base Offset instruction. Valid mode is Immediate (I think).
+    /// Adds the value of the parameter to the computer's current Relative Base
+    /// Offset register.
+    RelativeBaseOffset(ParameterMode),
     /// A Halt instruction. Stops the computer. No valid parameters.
     Halt
 }
@@ -58,6 +67,7 @@ impl Instruction {
             Instruction::JumpIfFalse(..) => 3,  // In the case where it does nothing.
             Instruction::LessThan(..) => 4,
             Instruction::Equals(..) => 4,
+            Instruction::RelativeBaseOffset(..) => 2,
             Instruction::Halt => panic!("Do not call instruction_pointer_increment() for Halt instructions"),
         }
     }
@@ -75,7 +85,7 @@ impl Instruction {
         // The opcode is in the rightmost two digits, which we can extract
         // by using the remainder operator.
         let opcode = match inst % 100 {
-            n @ 1..=8 => n,
+            n @ 1..=9 => n,
             99 => 99,
             _ => return Err(format!("Bad instruction {}, opcode not valid", inst))
         };
@@ -86,9 +96,9 @@ impl Instruction {
         // write junk into the wrong addresses.
         let instruction = match opcode {
             1 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
-                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, AllowedParameterMode::Either)?;
-                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, AllowedParameterMode::Position)?;
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
+                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, APM::Either)?;
+                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, APM::Position)?;
                 if inst / 10000 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -96,9 +106,9 @@ impl Instruction {
             },
 
             2 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
-                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, AllowedParameterMode::Either)?;
-                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, AllowedParameterMode::Position)?;
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
+                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, APM::Either)?;
+                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, APM::Position)?;
                 if inst / 10000 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -106,7 +116,7 @@ impl Instruction {
             },
 
             3 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Position)?;
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Position)?;
                 if inst / 100 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -114,7 +124,7 @@ impl Instruction {
             },
 
             4 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
                 if inst / 100 > 1 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -122,8 +132,8 @@ impl Instruction {
             },
 
             5 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
-                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, AllowedParameterMode::Either)?;
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
+                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, APM::Either)?;
                 if inst / 10000 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -131,8 +141,8 @@ impl Instruction {
             },
 
             6 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
-                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, AllowedParameterMode::Either)?;
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
+                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, APM::Either)?;
                 if inst / 10000 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -140,9 +150,9 @@ impl Instruction {
             },
 
             7 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
-                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, AllowedParameterMode::Either)?;
-                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, AllowedParameterMode::Position)?;
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
+                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, APM::Either)?;
+                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, APM::Position)?;
                 if inst / 10000 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
@@ -150,13 +160,21 @@ impl Instruction {
             },
 
             8 => {
-                let p1 = decode_parameter_mode(inst, ParameterNumber::One, AllowedParameterMode::Either)?;
-                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, AllowedParameterMode::Either)?;
-                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, AllowedParameterMode::Position)?;
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
+                let p2 = decode_parameter_mode(inst, ParameterNumber::Two, APM::Either)?;
+                let p3 = decode_parameter_mode(inst, ParameterNumber::Three, APM::Position)?;
                 if inst / 10000 > 0 {
                     return Err(format!("Invalid instruction {}, superfluous digits", inst));
                 }
                 Equals(p1, p2, p3)
+            },
+
+            9 => {
+                let p1 = decode_parameter_mode(inst, ParameterNumber::One, APM::Either)?;
+                if inst / 100 > 1 {
+                    return Err(format!("Invalid instruction {}, superfluous digits", inst));
+                }
+                RelativeBaseOffset(p1)
             },
 
             99 => {
@@ -177,11 +195,22 @@ impl Instruction {
 /// instruction. If a non-allowed parameter mode is detected, an
 /// error is returned.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum AllowedParameterMode {
+enum APM {
     Position,
     Immediate,
     Either,
 }
+
+bitflags! {
+    struct ModeFlags: u32 {
+        const POSITION = 0b00000001;
+        const IMMEDIATE = 0b00000010;
+        const RELATIVE = 0b00000100;
+        const ANY = Self::POSITION.bits | Self::IMMEDIATE.bits | Self::RELATIVE.bits;
+        const POS_OR_REL = Self::POSITION.bits | Self::RELATIVE.bits;
+    }
+}
+
 
 /// The possible parameters to an instruction. We use an enum to constrain
 /// the range of values that instances of this type can take (as opposed to
@@ -201,7 +230,7 @@ impl ParameterNumber {
 }
 
 /// Helper function to pull out a single parameter mode.
-fn decode_parameter_mode(inst: i64, prm_num: ParameterNumber, allowed: AllowedParameterMode) -> Result<ParameterMode, String> {
+fn decode_parameter_mode(inst: i64, prm_num: ParameterNumber, allowed: APM) -> Result<ParameterMode, String> {
     use self::ParameterMode::*;
 
     let i = inst / match prm_num {
@@ -216,7 +245,7 @@ fn decode_parameter_mode(inst: i64, prm_num: ParameterNumber, allowed: AllowedPa
 
     match mode {
         0 => {
-            if allowed == AllowedParameterMode::Position || allowed == AllowedParameterMode::Either {
+            if allowed == APM::Position || allowed == APM::Either {
                 Ok(Position)
             } else {
                 Err(format!(
@@ -225,13 +254,16 @@ fn decode_parameter_mode(inst: i64, prm_num: ParameterNumber, allowed: AllowedPa
             }
         },
         1 => {
-            if allowed == AllowedParameterMode::Immediate || allowed == AllowedParameterMode::Either {
+            if allowed == APM::Immediate || allowed == APM::Either {
                 Ok(Immediate)
             } else {
                 Err(format!(
                     "In instruction {}, found parameter mode {}, which does not comply with the allowed mode {:?}",
                     inst, mode, allowed))
             }
+        },
+        2 => {
+            Ok(Immediate)
         },
         _ => Err(format!("In instruction {}, found invalid parameter mode {}", inst, mode))
     }
@@ -393,6 +425,12 @@ impl<I> Computer<I>
                     self.instruction_pointer += inst.instruction_pointer_increment();
                 },
 
+                Instruction::RelativeBaseOffset(p1) => {
+                    let p1_value = self.fetch_operand(ParameterNumber::One, p1);
+                    self.relative_base += p1_value;
+                    self.instruction_pointer += inst.instruction_pointer_increment();
+                },
+
                 Instruction::Halt => {
                     self.execution_state = ExecutionState::Halted(self.program[0]);
                     break;
@@ -421,7 +459,10 @@ impl<I> Computer<I>
                 self.grow_memory_if_needed(address as usize);
                 self.program[address as usize]
             },
-            ParameterMode::Immediate => self.program[operand_index]
+            ParameterMode::Immediate => self.program[operand_index],
+            ParameterMode::Relative => {
+                unimplemented!();
+            },
         }
     }
 
@@ -441,6 +482,9 @@ impl<I> Computer<I>
 
             },
             ParameterMode::Immediate => panic!("FAULT: Cannot write to Immediate mode parameter"),
+            ParameterMode::Relative => {
+                unimplemented!();
+            },
         }
     }
 
@@ -483,9 +527,9 @@ mod tests {
         assert_eq!(Instruction::decode(1001).unwrap(), Add(Position, Immediate, Position));
         assert!(Instruction::decode(10001).is_err(), "Write prm must be Position mode");
         // Bad position modes, not repeated for other instructions.
-        assert!(Instruction::decode(201).is_err());
-        assert!(Instruction::decode(2001).is_err());
-        assert!(Instruction::decode(20001).is_err());
+        assert!(Instruction::decode(301).is_err());
+        assert!(Instruction::decode(3001).is_err());
+        assert!(Instruction::decode(30001).is_err());
     }
 
     #[test]

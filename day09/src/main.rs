@@ -1,5 +1,10 @@
+use computer::{Computer, ComputerIo, StandardComputerIoSystem, ExecutionState};
+
 fn main() {
-    let input = get_puzzle_input();
+    let program = get_puzzle_input();
+    let io  = StandardComputerIoSystem::new();
+    let mut computer = Computer::load_program(program, io);
+    computer.run();
 }
 
 fn get_input(raw_input: &str) -> Vec<i64> {
